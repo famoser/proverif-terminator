@@ -11,6 +11,9 @@ use crate::history::{initialize_history};
 #[derive(Parser)]
 struct Cli {
     #[arg(short,long)]
+    all: bool,
+
+    #[arg(short,long)]
     print_all: bool,
     #[arg(long)]
     print_selected_facts: bool,
@@ -27,16 +30,11 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
 
-    process_stdin(cli);
-}
-
-fn process_stdin(cli: Cli) {
-    let stdin = io::stdin();
-
-    let hypothesis_match = Regex::new(r"Rule with hypothesis fact (?<fact_number>[0-9]+) selected: (?<fact>.+)").unwrap();
-
     let mut history = initialize_history(&cli);
     let fact_checker = initialize_fact_checker(&cli);
+
+    let stdin = io::stdin();
+    let hypothesis_match = Regex::new(r"Rule with hypothesis fact (?<fact_number>[0-9]+) selected: (?<fact>.+)").unwrap();
 
     loop {
         let mut line = String::new();

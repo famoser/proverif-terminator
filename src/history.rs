@@ -21,6 +21,8 @@ struct Config {
 }
 
 pub fn initialize_history(cli: &Cli) -> History {
+    let all = cli.all || cli.print_all;
+
     History {
         last_fact: None,
         last_fact_count: 0,
@@ -32,8 +34,8 @@ pub fn initialize_history(cli: &Cli) -> History {
         last_cycle_end: 0,
 
         config: Config {
-            print_selected_facts: cli.print_all || cli.print_selected_facts,
-            print_cycles: cli.print_all || cli.print_loops,
+            print_selected_facts: all || cli.print_selected_facts,
+            print_cycles: all || cli.print_loops,
         }
     }
 }

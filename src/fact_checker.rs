@@ -34,9 +34,10 @@ impl FactChecker {
 }
 
 fn compose_targets(cli: &Cli) -> HashMap<&'static str, Vec<&'static str>> {
-    let mut templates_map: HashMap<&str, Vec<&str>> = HashMap::new();
+    let all = cli.all || cli.detect_all;
 
-    if cli.detect_all || cli.detect_high_counters {
+    let mut templates_map: HashMap<&str, Vec<&str>> = HashMap::new();
+    if all || cli.detect_high_counters {
         templates_map.insert("high_counter", vec![
             r"mess2\(.+,[0-9]{2,},.+\)", // detect 2-digit number in first channel
             r"mess2\(.+,[0-9]{2,}\)", // detect 2-digit number in second channel
