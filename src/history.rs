@@ -1,6 +1,6 @@
 use std::collections::{HashMap};
 use crate::Cli;
-use crate::cycles::{find_circles};
+use crate::cycles::{find_cycles, Cycle};
 
 pub struct History {
     last_fact: Option<String>,
@@ -8,6 +8,9 @@ pub struct History {
 
     fact_occurrence: HashMap<String, u32>,
     fact_history: Vec<(String, u32)>,
+
+    last_cycle: Option<Cycle>,
+    last_cycle_end: usize,
 
     config: Config
 }
@@ -24,6 +27,9 @@ pub fn initialize_history(cli: &Cli) -> History {
 
         fact_occurrence: HashMap::new(),
         fact_history: Vec::new(),
+
+        last_cycle: None,
+        last_cycle_end: 0,
 
         config: Config {
             print_selected_facts: cli.print_all || cli.print_selected_facts,
@@ -77,9 +83,28 @@ impl History {
     }
 
     fn detect_and_print_cycles(&mut self) {
-        let circle_size = find_circles(&self.fact_history);
-        if let Some(circle) = circle_size {
-            print!("\\e[33mCircle[0m: {:?}", circle);
+        // early-out if cycle potentially still active (avoids spamming smaller cycles in big cycle)
+        if let Some(last_cycle) = &self.last_cycle {
+            if self.fact_history.len() >= last_cycle.size {
+                self.last_cycle = None;
+            } else {
+                return;
+            }
+        }
+
+        if let Some(cycle) = find_cycles(&self.fact_history) {
+            self.last_cycle = Some(cycle);
+            self.last_cycle_end = self.fact_history.len() + cycle.size;
+
+            if cycle.size * cycle.repeat > 1000 {
+                println!("\x1b[91mCycle\x1b[0m: {:?}", cycle);
+                return;
+            }
+
+            if cycle.size * cycle.repeat > 10 {
+                println!("\x1b[93mCycle\x1b[0m: {:?}", cycle);
+                return;
+            }
         }
     }
 }

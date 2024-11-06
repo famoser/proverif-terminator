@@ -1,24 +1,24 @@
-#[derive(Debug, PartialEq, Eq)]
-pub struct Circle {
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct Cycle {
     pub size: usize,
     pub repeat: usize
 }
 
-pub fn find_circles(fact_history: &Vec<(String, u32)>) -> Option<Circle> {
-    let smallest_circle_size = find_smallest_circle_size(fact_history);
-    if let Some(smallest_circle_size) = smallest_circle_size {
-        let number_of_circles = find_number_of_circles(fact_history, smallest_circle_size);
+pub fn find_cycles(fact_history: &Vec<(String, u32)>) -> Option<Cycle> {
+    let smallest_cycle_size = find_smallest_cycle_size(fact_history);
+    if let Some(smallest_cycle_size) = smallest_cycle_size {
+        let number_of_cycles = find_number_of_cycles(fact_history, smallest_cycle_size);
 
-        return Some(Circle {
-            size: smallest_circle_size,
-            repeat: number_of_circles
+        return Some(Cycle {
+            size: smallest_cycle_size,
+            repeat: number_of_cycles
         })
     }
 
     None
 }
 
-fn find_smallest_circle_size(fact_history: &Vec<(String, u32)>) -> Option<usize> {
+fn find_smallest_cycle_size(fact_history: &Vec<(String, u32)>) -> Option<usize> {
     let history_size = fact_history.len();
     let head_index = history_size - 1;
     let head = &fact_history[head_index];
@@ -29,12 +29,12 @@ fn find_smallest_circle_size(fact_history: &Vec<(String, u32)>) -> Option<usize>
 
     loop {
         if fact_history[candidate_index] == *head {
-            let expected_circle_size = head_index - candidate_index;
+            let expected_cycle_size = head_index - candidate_index;
 
             // check for cycle
             let mut head_check = head_index - 1;
-            while head_check > candidate_index && head_check >= expected_circle_size {
-                if fact_history[head_check - expected_circle_size] != fact_history[head_check] {
+            while head_check > candidate_index && head_check >= expected_cycle_size {
+                if fact_history[head_check - expected_cycle_size] != fact_history[head_check] {
                     break;
                 }
 
@@ -43,7 +43,7 @@ fn find_smallest_circle_size(fact_history: &Vec<(String, u32)>) -> Option<usize>
 
             // cycle found
             if head_check == candidate_index {
-                return Some(expected_circle_size);
+                return Some(expected_cycle_size);
             }
         }
 
@@ -57,15 +57,15 @@ fn find_smallest_circle_size(fact_history: &Vec<(String, u32)>) -> Option<usize>
     None
 }
 
-fn find_number_of_circles(fact_history: &Vec<(String, u32)>, circle_size: usize) -> usize {
+fn find_number_of_cycles(fact_history: &Vec<(String, u32)>, cycle_size: usize) -> usize {
     let history_len = fact_history.len();
-    // only sensible if at least two circles entries
-    if history_len < circle_size { return 0; }
+    // only sensible if at least two cycles entries
+    if history_len < cycle_size { return 0; }
 
     let mut head_index = history_len - 1;
 
     loop {
-        let candidate = head_index - circle_size;
+        let candidate = head_index - cycle_size;
         if fact_history[candidate] != fact_history[head_index] {
             head_index += 1;
             break;
@@ -78,33 +78,33 @@ fn find_number_of_circles(fact_history: &Vec<(String, u32)>, circle_size: usize)
         head_index -= 1
     }
 
-    let correct_streak = history_len - (head_index-circle_size);
-    correct_streak / circle_size
+    let correct_streak = history_len - (head_index-cycle_size);
+    correct_streak / cycle_size
 }
 
 #[test]
-fn test_circles_no_circle() {
+fn test_cycles_no_cycle() {
     let fact_history = vec![("a".to_string(), 1), ("a".to_string(), 2), ("b".to_string(), 1)];
-    assert_eq!(find_circles(&fact_history), None);
+    assert_eq!(find_cycles(&fact_history), None);
 
     let fact_history = vec![("a".to_string(), 1), ("b".to_string(), 1), ("a".to_string(), 1)];
-    assert_eq!(find_circles(&fact_history), None);
+    assert_eq!(find_cycles(&fact_history), None);
 
     let fact_history = vec![("a".to_string(), 1), ("b".to_string(), 2), ("a".to_string(), 1)];
-    assert_eq!(find_circles(&fact_history), None);
+    assert_eq!(find_cycles(&fact_history), None);
 }
 
 #[test]
-fn test_circles_one_circle() {
+fn test_cycles_one_cycle() {
     let fact_history = vec![("b".to_string(), 2), ("a".to_string(), 1), ("a".to_string(), 1)];
-    assert_eq!(find_circles(&fact_history), Some(Circle { size: 1, repeat: 2 }));
+    assert_eq!(find_cycles(&fact_history), Some(Cycle { size: 1, repeat: 2 }));
 
     let fact_history = vec![("a".to_string(), 1), ("a".to_string(), 2), ("a".to_string(), 1), ("a".to_string(), 2), ("a".to_string(), 1)];
-    assert_eq!(find_circles(&fact_history), Some(Circle { size: 2, repeat: 2 }));
+    assert_eq!(find_cycles(&fact_history), Some(Cycle { size: 2, repeat: 2 }));
 }
 
 #[test]
-fn test_find_number_of_circles_multiple_circles() {
+fn test_find_number_of_cycles_multiple_cycles() {
     let fact_history = vec![("a".to_string(), 1), ("a".to_string(), 2), ("a".to_string(), 1), ("a".to_string(), 2), ("a".to_string(), 1), ("a".to_string(), 2)];
-    assert_eq!(find_circles(&fact_history), Some(Circle { size: 2, repeat: 3 }));
+    assert_eq!(find_cycles(&fact_history), Some(Cycle { size: 2, repeat: 3 }));
 }
