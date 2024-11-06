@@ -4,7 +4,7 @@ pub struct Cycle {
     pub repeat: usize,
 }
 
-pub fn find_cycles(fact_history: &Vec<(String, u32)>) -> Option<Cycle> {
+pub fn find_cycles(fact_history: &[(String, u32)]) -> Option<Cycle> {
     let smallest_cycle_size = find_smallest_cycle_size(fact_history);
     if let Some(smallest_cycle_size) = smallest_cycle_size {
         let number_of_cycles = find_number_of_cycles(fact_history, smallest_cycle_size);
@@ -18,7 +18,7 @@ pub fn find_cycles(fact_history: &Vec<(String, u32)>) -> Option<Cycle> {
     None
 }
 
-fn find_smallest_cycle_size(fact_history: &Vec<(String, u32)>) -> Option<usize> {
+fn find_smallest_cycle_size(fact_history: &[(String, u32)]) -> Option<usize> {
     let history_size = fact_history.len();
     let head_index = history_size - 1;
     let head = &fact_history[head_index];
@@ -59,7 +59,7 @@ fn find_smallest_cycle_size(fact_history: &Vec<(String, u32)>) -> Option<usize> 
     None
 }
 
-fn find_number_of_cycles(fact_history: &Vec<(String, u32)>, cycle_size: usize) -> usize {
+fn find_number_of_cycles(fact_history: &[(String, u32)], cycle_size: usize) -> usize {
     let history_len = fact_history.len();
     // only sensible if at least two cycles entries
     if history_len < cycle_size {

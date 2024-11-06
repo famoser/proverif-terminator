@@ -117,7 +117,6 @@ impl History {
 
             if cycle.size * cycle.repeat > 10 {
                 println!("\x1b[93mCycle\x1b[0m: {:?}", cycle);
-                return;
             }
         }
     }

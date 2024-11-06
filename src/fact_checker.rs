@@ -20,7 +20,7 @@ impl FactChecker {
             let group_entries = group.1;
 
             for regex in group_entries.iter() {
-                if !regex.is_match(&fact) {
+                if !regex.is_match(fact) {
                     continue;
                 }
 
