@@ -1,6 +1,6 @@
 use std::collections::{HashMap};
 use crate::Cli;
-use crate::cycles::find_circle_size;
+use crate::cycles::{find_circles};
 
 pub struct History {
     last_fact: Option<String>,
@@ -77,10 +77,9 @@ impl History {
     }
 
     fn detect_and_print_cycles(&mut self) {
-        let circle_size = find_circle_size(&self.fact_history);
-        if let Some(circle_size_unwrapped) = circle_size {
-            // todo: calculate cycle with content, #occurrences
-            println!("Circle found of size {circle_size_unwrapped}")
+        let circle_size = find_circles(&self.fact_history);
+        if let Some(circle) = circle_size {
+            print!("\\e[33mCircle[0m: {:?}", circle);
         }
     }
 }
