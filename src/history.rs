@@ -1,6 +1,6 @@
-use std::collections::{HashMap};
-use crate::Cli;
 use crate::cycles::{find_cycles, Cycle};
+use crate::Cli;
+use std::collections::HashMap;
 
 pub struct History {
     last_fact: Option<String>,
@@ -12,7 +12,7 @@ pub struct History {
     last_cycle: Option<Cycle>,
     last_cycle_end: usize,
 
-    config: Config
+    config: Config,
 }
 
 struct Config {
@@ -36,7 +36,7 @@ pub fn initialize_history(cli: &Cli) -> History {
         config: Config {
             print_selected_facts: all || cli.print_selected_facts,
             print_cycles: all || cli.print_loops,
-        }
+        },
     }
 }
 
@@ -55,10 +55,15 @@ impl History {
         if let Some(last_fact_unwrap) = self.last_fact.clone() {
             // if different fact, fill history
             if last_fact_unwrap != fact {
-                self.fact_history.push((last_fact_unwrap.clone(), self.last_fact_count));
+                self.fact_history
+                    .push((last_fact_unwrap.clone(), self.last_fact_count));
 
-                if self.config.print_selected_facts { Self::print_fact(&last_fact_unwrap, self.last_fact_count, false); }
-                if self.config.print_cycles { self.detect_and_print_cycles(); }
+                if self.config.print_selected_facts {
+                    Self::print_fact(&last_fact_unwrap, self.last_fact_count, false);
+                }
+                if self.config.print_cycles {
+                    self.detect_and_print_cycles();
+                }
 
                 // reset
                 self.last_fact_count = 0;
@@ -72,7 +77,9 @@ impl History {
 
         self.last_fact_count += 1;
 
-        if self.config.print_selected_facts { Self::print_fact(&fact, self.last_fact_count, true); }
+        if self.config.print_selected_facts {
+            Self::print_fact(&fact, self.last_fact_count, true);
+        }
     }
 
     fn print_fact(fact: &str, count: u32, intermediate: bool) {

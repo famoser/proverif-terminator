@@ -1,27 +1,26 @@
-mod history;
 mod cycles;
 mod fact_checker;
+mod history;
 
-use std::io::{self};
-use regex::Regex;
-use clap::Parser;
 use crate::fact_checker::initialize_fact_checker;
-use crate::history::{initialize_history};
+use crate::history::initialize_history;
+use clap::Parser;
+use regex::Regex;
+use std::io::{self};
 
 #[derive(Parser)]
 struct Cli {
-    #[arg(short,long)]
+    #[arg(short, long)]
     all: bool,
 
-    #[arg(short,long)]
+    #[arg(short, long)]
     print_all: bool,
     #[arg(long)]
     print_selected_facts: bool,
     #[arg(long)]
     print_loops: bool,
 
-
-    #[arg(short,long)]
+    #[arg(short, long)]
     detect_all: bool,
     #[arg(long)]
     detect_high_counters: bool,
@@ -34,7 +33,9 @@ fn main() {
     let fact_checker = initialize_fact_checker(&cli);
 
     let stdin = io::stdin();
-    let hypothesis_match = Regex::new(r"Rule with hypothesis fact (?<fact_number>[0-9]+) selected: (?<fact>.+)").unwrap();
+    let hypothesis_match =
+        Regex::new(r"Rule with hypothesis fact (?<fact_number>[0-9]+) selected: (?<fact>.+)")
+            .unwrap();
 
     loop {
         let mut line = String::new();
