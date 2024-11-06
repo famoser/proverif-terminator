@@ -84,8 +84,8 @@ impl History {
 
     fn detect_and_print_cycles(&mut self) {
         // early-out if cycle potentially still active (avoids spamming smaller cycles in big cycle)
-        if let Some(last_cycle) = &self.last_cycle {
-            if self.fact_history.len() >= last_cycle.size {
+        if self.last_cycle.is_some() {
+            if self.fact_history.len() >= self.last_cycle_end {
                 self.last_cycle = None;
             } else {
                 return;
@@ -98,6 +98,11 @@ impl History {
 
             if cycle.size * cycle.repeat > 1000 {
                 println!("\x1b[91mCycle\x1b[0m: {:?}", cycle);
+                return;
+            }
+
+            if cycle.size * cycle.repeat > 100 {
+                println!("\x1b[38;5;208mCycle\x1b[0m: {:?}", cycle);
                 return;
             }
 
