@@ -1,5 +1,5 @@
-use crate::Cli;
 use crate::printer::Printer;
+use crate::Cli;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct Cycle {
@@ -30,7 +30,11 @@ pub fn initialize_cycle_detector(cli: &Cli) -> CycleDetector {
 }
 
 impl CycleDetector {
-    pub fn check_history_cycles(&mut self, fact_history: &[(String, u32)], queue_printer: &mut dyn Printer) {
+    pub fn check_history_cycles(
+        &mut self,
+        fact_history: &[(String, u32)],
+        queue_printer: &mut dyn Printer,
+    ) {
         // early out if no output
         if !self.print_cycles {
             return;
