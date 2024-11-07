@@ -54,7 +54,14 @@ fn main() {
         if process_queue_fact(&queue_match, &mut line, &mut queue_printer) {
             continue;
         }
-        if process_hypothesis_fact(&hypothesis_match, &mut line, &mut queue_printer, &mut history, &mut cycle_detector, &fact_checker) {
+        if process_hypothesis_fact(
+            &hypothesis_match,
+            &mut line,
+            &mut queue_printer,
+            &mut history,
+            &mut cycle_detector,
+            &fact_checker,
+        ) {
             continue;
         }
     }
@@ -62,10 +69,10 @@ fn main() {
 
 fn process_queue_fact(
     queue_match: &Regex,
-    line: &mut String,
+    line: &mut str,
     queue_printer: &mut QueuePrinter,
 ) -> bool {
-    let captures = queue_match.captures(&line);
+    let captures = queue_match.captures(line);
     if captures.is_none() {
         return false;
     }
@@ -87,15 +94,15 @@ fn process_queue_fact(
 
     true
 }
-fn process_hypothesis_fact<'a>(
+fn process_hypothesis_fact(
     hypothesis_match: &Regex,
-    line: &mut String,
+    line: &mut str,
     queue_printer: &mut QueuePrinter,
     history: &mut History,
     cycle_detector: &mut CycleDetector,
     fact_checker: &FactChecker,
 ) -> bool {
-    let captures = hypothesis_match.captures(&line);
+    let captures = hypothesis_match.captures(line);
     if captures.is_none() {
         return false;
     }

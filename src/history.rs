@@ -12,9 +12,7 @@ pub struct History {
     print_selected_facts: bool,
 }
 
-pub fn initialize_history(
-    cli: &Cli,
-) -> History {
+pub fn initialize_history(cli: &Cli) -> History {
     let all = cli.all || cli.print_all;
 
     History {
