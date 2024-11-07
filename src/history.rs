@@ -6,14 +6,10 @@ pub struct History {
     last_fact: Option<String>,
     last_fact_count: u32,
 
-    fact_occurrence: HashMap<String, u32>,
-    fact_history: Vec<(String, u32)>,
+    pub fact_occurrence: HashMap<String, u32>,
+    pub fact_history: Vec<(String, u32)>,
 
     print_selected_facts: bool,
-}
-
-pub trait HistoryConsumer {
-    fn register_history_changed(&mut self, history: &[(String, u32)]);
 }
 
 pub fn initialize_history(
@@ -33,7 +29,7 @@ pub fn initialize_history(
 }
 
 impl History {
-    pub fn register_selected_fact(&mut self, fact: String, printer: &dyn Printer) {
+    pub fn register_selected_fact(&mut self, fact: String, printer: &mut dyn Printer) {
         *self.fact_occurrence.entry(fact.clone()).or_insert(0) += 1;
 
         // first invocation
@@ -51,7 +47,7 @@ impl History {
                     .push((last_fact_unwrap.clone(), self.last_fact_count));
 
                 // output
-                self.print_fact(printer, &last_fact_unwrap, self.last_fact_count, false);
+                self.print_fact(printer, &last_fact_unwrap, self.last_fact_count, true);
 
                 // reset
                 self.last_fact_count = 0;
@@ -66,18 +62,18 @@ impl History {
         self.last_fact_count += 1;
 
         // output
-        self.print_fact(printer, &fact, self.last_fact_count, true);
+        self.print_fact(printer, &fact, self.last_fact_count, false);
     }
 
-    fn print_fact(&self, printer: &dyn Printer, fact: &str, count: u32, intermediate: bool) {
+    fn print_fact(&self, printer: &mut dyn Printer, fact: &str, count: u32, persistent: bool) {
         if !self.print_selected_facts {
             return;
         }
 
         if count > 1 {
-            printer.print(format!("Selected ({count}x): {fact}"), intermediate);
+            printer.print(format!("Selected ({count}x): {fact}"), persistent);
         } else {
-            printer.print(format!("Choosing: {fact}"), intermediate);
+            printer.print(format!("Selected: {fact}"), persistent);
         }
     }
 }

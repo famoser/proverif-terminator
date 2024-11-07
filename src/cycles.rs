@@ -1,5 +1,5 @@
-use crate::history::{HistoryConsumer};
 use crate::Cli;
+use crate::printer::Printer;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct Cycle {
@@ -11,10 +11,10 @@ pub struct CycleDetector {
     last_cycle: Option<Cycle>,
     last_cycle_end: usize,
 
+    last_fact_history_length: usize,
+
     print_cycles: bool,
 }
-
-struct Config {}
 
 pub fn initialize_cycle_detector(cli: &Cli) -> CycleDetector {
     let all = cli.all || cli.print_all;
@@ -23,12 +23,25 @@ pub fn initialize_cycle_detector(cli: &Cli) -> CycleDetector {
         last_cycle: None,
         last_cycle_end: 0,
 
+        last_fact_history_length: 0,
+
         print_cycles: all || cli.print_cycles,
     }
 }
 
-impl HistoryConsumer for CycleDetector {
-    fn register_history_changed(&mut self, fact_history: &[(String, u32)]) {
+impl CycleDetector {
+    pub fn check_history_cycles(&mut self, fact_history: &[(String, u32)], queue_printer: &mut dyn Printer) {
+        // early out if no output
+        if !self.print_cycles {
+            return;
+        }
+
+        // early out if no change in history
+        // this assumes that the passed fact histories are related.
+        if self.last_fact_history_length == fact_history.len() {
+            return;
+        }
+
         // early-out if cycle potentially still active (avoids spamming smaller cycles in big cycle)
         if self.last_cycle.is_some() {
             if fact_history.len() >= self.last_cycle_end {
@@ -43,17 +56,17 @@ impl HistoryConsumer for CycleDetector {
             self.last_cycle_end = fact_history.len() + cycle.size;
 
             if cycle.size * cycle.repeat > 1000 {
-                println!("\x1b[91mCycle\x1b[0m: {:?}", cycle);
+                queue_printer.print_persistent(format!("\x1b[91mCycle\x1b[0m: {:?}", cycle));
                 return;
             }
 
             if cycle.size * cycle.repeat > 100 {
-                println!("\x1b[38;5;208mCycle\x1b[0m: {:?}", cycle);
+                queue_printer.print_persistent(format!("\x1b[38;5;208mCycle\x1b[0m: {:?}", cycle));
                 return;
             }
 
             if cycle.size * cycle.repeat > 10 {
-                println!("\x1b[93mCycle\x1b[0m: {:?}", cycle);
+                queue_printer.print_persistent(format!("\x1b[93mCycle\x1b[0m: {:?}", cycle));
             }
         }
     }

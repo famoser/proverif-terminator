@@ -105,6 +105,7 @@ fn process_hypothesis_fact<'a>(
 
     // stats
     history.register_selected_fact(fact.to_string(), queue_printer);
+    cycle_detector.check_history_cycles(&history.fact_history, queue_printer);
     fact_checker.check(fact);
 
     true
