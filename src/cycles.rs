@@ -1,10 +1,65 @@
+use crate::history::{HistoryConsumer};
+use crate::Cli;
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct Cycle {
     pub size: usize,
     pub repeat: usize,
 }
 
-pub fn find_cycles(fact_history: &[(String, u32)]) -> Option<Cycle> {
+pub struct CycleDetector {
+    last_cycle: Option<Cycle>,
+    last_cycle_end: usize,
+
+    print_cycles: bool,
+}
+
+struct Config {}
+
+pub fn initialize_cycle_detector(cli: &Cli) -> CycleDetector {
+    let all = cli.all || cli.print_all;
+
+    CycleDetector {
+        last_cycle: None,
+        last_cycle_end: 0,
+
+        print_cycles: all || cli.print_cycles,
+    }
+}
+
+impl HistoryConsumer for CycleDetector {
+    fn register_history_changed(&mut self, fact_history: &[(String, u32)]) {
+        // early-out if cycle potentially still active (avoids spamming smaller cycles in big cycle)
+        if self.last_cycle.is_some() {
+            if fact_history.len() >= self.last_cycle_end {
+                self.last_cycle = None;
+            } else {
+                return;
+            }
+        }
+
+        if let Some(cycle) = find_cycles(fact_history) {
+            self.last_cycle = Some(cycle);
+            self.last_cycle_end = fact_history.len() + cycle.size;
+
+            if cycle.size * cycle.repeat > 1000 {
+                println!("\x1b[91mCycle\x1b[0m: {:?}", cycle);
+                return;
+            }
+
+            if cycle.size * cycle.repeat > 100 {
+                println!("\x1b[38;5;208mCycle\x1b[0m: {:?}", cycle);
+                return;
+            }
+
+            if cycle.size * cycle.repeat > 10 {
+                println!("\x1b[93mCycle\x1b[0m: {:?}", cycle);
+            }
+        }
+    }
+}
+
+fn find_cycles(fact_history: &[(String, u32)]) -> Option<Cycle> {
     let smallest_cycle_size = find_smallest_cycle_size(fact_history);
     if let Some(smallest_cycle_size) = smallest_cycle_size {
         let number_of_cycles = find_number_of_cycles(fact_history, smallest_cycle_size);

@@ -1,4 +1,4 @@
-use crate::cycles::{find_cycles, Cycle};
+use crate::printer::Printer;
 use crate::Cli;
 use std::collections::HashMap;
 
@@ -9,18 +9,16 @@ pub struct History {
     fact_occurrence: HashMap<String, u32>,
     fact_history: Vec<(String, u32)>,
 
-    last_cycle: Option<Cycle>,
-    last_cycle_end: usize,
-
-    config: Config,
-}
-
-struct Config {
     print_selected_facts: bool,
-    print_cycles: bool,
 }
 
-pub fn initialize_history(cli: &Cli) -> History {
+pub trait HistoryConsumer {
+    fn register_history_changed(&mut self, history: &[(String, u32)]);
+}
+
+pub fn initialize_history(
+    cli: &Cli,
+) -> History {
     let all = cli.all || cli.print_all;
 
     History {
@@ -30,18 +28,12 @@ pub fn initialize_history(cli: &Cli) -> History {
         fact_occurrence: HashMap::new(),
         fact_history: Vec::new(),
 
-        last_cycle: None,
-        last_cycle_end: 0,
-
-        config: Config {
-            print_selected_facts: all || cli.print_selected_facts,
-            print_cycles: all || cli.print_loops,
-        },
+        print_selected_facts: all || cli.print_selected_facts,
     }
 }
 
 impl History {
-    pub fn register_selected_fact(&mut self, fact: String) {
+    pub fn register_selected_fact(&mut self, fact: String, printer: &dyn Printer) {
         *self.fact_occurrence.entry(fact.clone()).or_insert(0) += 1;
 
         // first invocation
@@ -58,12 +50,8 @@ impl History {
                 self.fact_history
                     .push((last_fact_unwrap.clone(), self.last_fact_count));
 
-                if self.config.print_selected_facts {
-                    Self::print_fact(&last_fact_unwrap, self.last_fact_count, false);
-                }
-                if self.config.print_cycles {
-                    self.detect_and_print_cycles();
-                }
+                // output
+                self.print_fact(printer, &last_fact_unwrap, self.last_fact_count, false);
 
                 // reset
                 self.last_fact_count = 0;
@@ -77,47 +65,19 @@ impl History {
 
         self.last_fact_count += 1;
 
-        if self.config.print_selected_facts {
-            Self::print_fact(&fact, self.last_fact_count, true);
-        }
+        // output
+        self.print_fact(printer, &fact, self.last_fact_count, true);
     }
 
-    fn print_fact(fact: &str, count: u32, intermediate: bool) {
-        let line_ending = if intermediate { "\r" } else { "\n" };
+    fn print_fact(&self, printer: &dyn Printer, fact: &str, count: u32, intermediate: bool) {
+        if !self.print_selected_facts {
+            return;
+        }
+
         if count > 1 {
-            print!("Choosing ({count}x): {fact} {line_ending}");
+            printer.print(format!("Selected ({count}x): {fact}"), intermediate);
         } else {
-            print!("Choosing: {fact}{line_ending}");
-        }
-    }
-
-    fn detect_and_print_cycles(&mut self) {
-        // early-out if cycle potentially still active (avoids spamming smaller cycles in big cycle)
-        if self.last_cycle.is_some() {
-            if self.fact_history.len() >= self.last_cycle_end {
-                self.last_cycle = None;
-            } else {
-                return;
-            }
-        }
-
-        if let Some(cycle) = find_cycles(&self.fact_history) {
-            self.last_cycle = Some(cycle);
-            self.last_cycle_end = self.fact_history.len() + cycle.size;
-
-            if cycle.size * cycle.repeat > 1000 {
-                println!("\x1b[91mCycle\x1b[0m: {:?}", cycle);
-                return;
-            }
-
-            if cycle.size * cycle.repeat > 100 {
-                println!("\x1b[38;5;208mCycle\x1b[0m: {:?}", cycle);
-                return;
-            }
-
-            if cycle.size * cycle.repeat > 10 {
-                println!("\x1b[93mCycle\x1b[0m: {:?}", cycle);
-            }
+            printer.print(format!("Choosing: {fact}"), intermediate);
         }
     }
 }
