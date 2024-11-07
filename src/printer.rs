@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter};
 
 pub struct QueuePrinter {
     queue_state: Option<QueueState>,
+    last_transient_print: String,
     print_queue_state: bool,
 }
 
@@ -28,18 +29,19 @@ pub fn initialize_queue_printer(cli: &Cli) -> QueuePrinter {
 
     QueuePrinter {
         queue_state: None,
+        last_transient_print: String::from(""),
         print_queue_state: all || cli.print_queue_state,
     }
 }
 
 pub trait Printer {
-    fn print(&self, line: String, persistent: bool);
-    fn print_transient(&self, line: String);
-    fn print_persistent(&self, line: String);
+    fn print(&mut self, line: String, persistent: bool);
+    fn print_transient(&mut self, line: String);
+    fn print_persistent(&mut self, line: String);
 }
 
 impl Printer for QueuePrinter {
-    fn print(&self, line: String, persistent: bool) {
+    fn print(&mut self, line: String, persistent: bool) {
         if persistent {
             self.print_persistent(line);
         } else {
@@ -47,21 +49,14 @@ impl Printer for QueuePrinter {
         }
     }
 
-    fn print_transient(&self, line: String) {
-        if self.print_queue_state && self.queue_state.is_some() {
-            let queue_state = self.queue_state.unwrap();
-            print!("({queue_state}): {line}\r");
-        } else {
-            print!("{line}\r");
-        }
+    fn print_transient(&mut self, line: String) {
+        self.last_transient_print = line.clone();
+        self.print_internal(&self.last_transient_print, false);
     }
 
-    fn print_persistent(&self, line: String) {
-        print!("{line}\n");
-        if self.print_queue_state && self.queue_state.is_some() {
-            let queue_state = self.queue_state.unwrap();
-            print!("({queue_state})\r");
-        }
+    fn print_persistent(&mut self, line: String) {
+        self.last_transient_print = String::from("");
+        self.print_internal(&line, true);
     }
 }
 
@@ -76,6 +71,17 @@ impl QueuePrinter {
             in_queue,
             with_hypothesis_selected,
             with_conclusion_selected,
-        })
+        });
+
+        self.print_internal(&self.last_transient_print, false);
+    }
+
+    fn print_internal(&self, line: &String, persistent: bool) {
+        let line_ending = if persistent { "\n" } else { "\r" };
+        if self.print_queue_state && self.queue_state.is_some() {
+            print!("({0}): {line}{line_ending}", self.queue_state.unwrap());
+        } else {
+            print!("{line}{line_ending}");
+        }
     }
 }
