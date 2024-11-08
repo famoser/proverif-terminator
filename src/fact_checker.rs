@@ -1,6 +1,7 @@
 use crate::Cli;
 use regex::Regex;
 use std::collections::HashMap;
+use crate::printer::Printer;
 
 pub struct FactChecker {
     regex_map: HashMap<&'static str, Vec<Regex>>,
@@ -14,7 +15,7 @@ pub fn initialize_fact_checker(cli: &Cli) -> FactChecker {
 }
 
 impl FactChecker {
-    pub fn check(&self, fact: &str) {
+    pub fn check(&self, fact: &str, printer: &mut Printer) {
         for group in self.regex_map.iter() {
             let group_header = group.0;
             let group_entries = group.1;
@@ -24,7 +25,7 @@ impl FactChecker {
                     continue;
                 }
 
-                println!("Found {group_header} pattern: {fact}");
+                printer.print_warning(format!("{} pattern", group_header), regex.to_string());
             }
         }
     }
@@ -36,7 +37,7 @@ fn compose_targets(cli: &Cli) -> HashMap<&'static str, Vec<&'static str>> {
     let mut templates_map: HashMap<&str, Vec<&str>> = HashMap::new();
     if all || cli.detect_high_counters {
         templates_map.insert(
-            "high_counter",
+            "HighCounter",
             vec![
                 r"mess2\(.+,[0-9]{2,},.+\)", // detect 2-digit number in first channel
                 r"mess2\(.+,[0-9]{2,}\)",    // detect 2-digit number in second channel

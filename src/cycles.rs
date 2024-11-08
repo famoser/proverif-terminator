@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use crate::printer::Printer;
 use crate::Cli;
 
@@ -11,7 +12,7 @@ pub struct CycleDetector {
     last_cycle: Option<Cycle>,
     last_cycle_end: usize,
 
-    last_fact_history_length: usize,
+    last_history_length: usize,
 
     print_cycles: bool,
 }
@@ -23,17 +24,17 @@ pub fn initialize_cycle_detector(cli: &Cli) -> CycleDetector {
         last_cycle: None,
         last_cycle_end: 0,
 
-        last_fact_history_length: 0,
+        last_history_length: 0,
 
         print_cycles: all || cli.print_cycles,
     }
 }
 
 impl CycleDetector {
-    pub fn check_history_cycles(
+    pub fn check_cycles(
         &mut self,
-        fact_history: &[(String, u32)],
-        queue_printer: &mut dyn Printer,
+        history: &[(String, u32)],
+        printer: &mut Printer,
     ) {
         // early out if no output
         if !self.print_cycles {
@@ -42,44 +43,44 @@ impl CycleDetector {
 
         // early out if no change in history
         // this assumes that the passed fact histories are related.
-        if self.last_fact_history_length == fact_history.len() {
+        if self.last_history_length == history.len() {
             return;
         }
 
         // early-out if cycle potentially still active (avoids spamming smaller cycles in big cycle)
         if self.last_cycle.is_some() {
-            if fact_history.len() >= self.last_cycle_end {
-                self.last_cycle = None;
-            } else {
+            if history.len() < self.last_cycle_end {
                 return;
             }
+
+            self.last_cycle = None;
         }
 
-        if let Some(cycle) = find_cycles(fact_history) {
+        if let Some(cycle) = find_cycles(history) {
             self.last_cycle = Some(cycle);
-            self.last_cycle_end = fact_history.len() + cycle.size;
+            self.last_cycle_end = history.len() + cycle.size;
 
             if cycle.size * cycle.repeat > 1000 {
-                queue_printer.print_persistent(format!("\x1b[91mCycle\x1b[0m: {:?}", cycle));
+                printer.print_error("Cycle".to_string(), format!("{:?}", cycle));
                 return;
             }
 
             if cycle.size * cycle.repeat > 100 {
-                queue_printer.print_persistent(format!("\x1b[38;5;208mCycle\x1b[0m: {:?}", cycle));
+                printer.print_warning("Cycle".to_string(), format!("{:?}", cycle));
                 return;
             }
 
             if cycle.size * cycle.repeat > 10 {
-                queue_printer.print_persistent(format!("\x1b[93mCycle\x1b[0m: {:?}", cycle));
+                printer.print_info("Cycle".to_string(), format!("{:?}", cycle));
             }
         }
     }
 }
 
-fn find_cycles(fact_history: &[(String, u32)]) -> Option<Cycle> {
-    let smallest_cycle_size = find_smallest_cycle_size(fact_history);
+fn find_cycles(history: &[(String, u32)]) -> Option<Cycle> {
+    let smallest_cycle_size = find_smallest_cycle_size(history);
     if let Some(smallest_cycle_size) = smallest_cycle_size {
-        let number_of_cycles = find_number_of_cycles(fact_history, smallest_cycle_size);
+        let number_of_cycles = find_number_of_cycles(history, smallest_cycle_size);
 
         return Some(Cycle {
             size: smallest_cycle_size,
@@ -90,10 +91,10 @@ fn find_cycles(fact_history: &[(String, u32)]) -> Option<Cycle> {
     None
 }
 
-fn find_smallest_cycle_size(fact_history: &[(String, u32)]) -> Option<usize> {
-    let history_size = fact_history.len();
+fn find_smallest_cycle_size(history: &[(String, u32)]) -> Option<usize> {
+    let history_size = history.len();
     let head_index = history_size - 1;
-    let head = &fact_history[head_index];
+    let head = &history[head_index];
 
     // only sensible if at least two entries
     if history_size < 2 {
@@ -102,13 +103,13 @@ fn find_smallest_cycle_size(fact_history: &[(String, u32)]) -> Option<usize> {
     let mut candidate_index = head_index - 1;
 
     loop {
-        if fact_history[candidate_index] == *head {
+        if history[candidate_index] == *head {
             let expected_cycle_size = head_index - candidate_index;
 
             // check for cycle
             let mut head_check = head_index - 1;
             while head_check > candidate_index && head_check >= expected_cycle_size {
-                if fact_history[head_check - expected_cycle_size] != fact_history[head_check] {
+                if history[head_check - expected_cycle_size] != history[head_check] {
                     break;
                 }
 
@@ -131,8 +132,8 @@ fn find_smallest_cycle_size(fact_history: &[(String, u32)]) -> Option<usize> {
     None
 }
 
-fn find_number_of_cycles(fact_history: &[(String, u32)], cycle_size: usize) -> usize {
-    let history_len = fact_history.len();
+fn find_number_of_cycles(history: &[(String, u32)], cycle_size: usize) -> usize {
+    let history_len = history.len();
     // only sensible if at least two cycles entries
     if history_len < cycle_size {
         return 0;
@@ -142,7 +143,7 @@ fn find_number_of_cycles(fact_history: &[(String, u32)], cycle_size: usize) -> u
 
     loop {
         let candidate = head_index - cycle_size;
-        if fact_history[candidate] != fact_history[head_index] {
+        if history[candidate] != history[head_index] {
             head_index += 1;
             break;
         }
@@ -160,41 +161,41 @@ fn find_number_of_cycles(fact_history: &[(String, u32)], cycle_size: usize) -> u
 
 #[test]
 fn test_cycles_no_cycle() {
-    let fact_history = vec![
+    let history = vec![
         ("a".to_string(), 1),
         ("a".to_string(), 2),
         ("b".to_string(), 1),
     ];
-    assert_eq!(find_cycles(&fact_history), None);
+    assert_eq!(find_cycles(&history), None);
 
-    let fact_history = vec![
+    let history = vec![
         ("a".to_string(), 1),
         ("b".to_string(), 1),
         ("a".to_string(), 1),
     ];
-    assert_eq!(find_cycles(&fact_history), None);
+    assert_eq!(find_cycles(&history), None);
 
-    let fact_history = vec![
+    let history = vec![
         ("a".to_string(), 1),
         ("b".to_string(), 2),
         ("a".to_string(), 1),
     ];
-    assert_eq!(find_cycles(&fact_history), None);
+    assert_eq!(find_cycles(&history), None);
 }
 
 #[test]
 fn test_cycles_one_cycle() {
-    let fact_history = vec![
+    let history = vec![
         ("b".to_string(), 2),
         ("a".to_string(), 1),
         ("a".to_string(), 1),
     ];
     assert_eq!(
-        find_cycles(&fact_history),
+        find_cycles(&history),
         Some(Cycle { size: 1, repeat: 2 })
     );
 
-    let fact_history = vec![
+    let history = vec![
         ("a".to_string(), 1),
         ("a".to_string(), 2),
         ("a".to_string(), 1),
@@ -202,14 +203,14 @@ fn test_cycles_one_cycle() {
         ("a".to_string(), 1),
     ];
     assert_eq!(
-        find_cycles(&fact_history),
+        find_cycles(&history),
         Some(Cycle { size: 2, repeat: 2 })
     );
 }
 
 #[test]
 fn test_find_number_of_cycles_multiple_cycles() {
-    let fact_history = vec![
+    let history = vec![
         ("a".to_string(), 1),
         ("a".to_string(), 2),
         ("a".to_string(), 1),
@@ -218,7 +219,7 @@ fn test_find_number_of_cycles_multiple_cycles() {
         ("a".to_string(), 2),
     ];
     assert_eq!(
-        find_cycles(&fact_history),
+        find_cycles(&history),
         Some(Cycle { size: 2, repeat: 3 })
     );
 }
