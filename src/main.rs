@@ -58,13 +58,13 @@ fn main() {
         let mut line = String::new();
         stdin.read_line(&mut line).unwrap();
 
-        let queue_capture = queue_match.captures(&mut line);
+        let queue_capture = queue_match.captures(&line);
         if let Some(queue_capture) = queue_capture {
             process_queue_status(&queue_capture, &mut saturation_state);
             continue;
         }
 
-        let hypothesis_capture = hypothesis_match.captures(&mut line);
+        let hypothesis_capture = hypothesis_match.captures(&line);
         if let Some(hypothesis_capture) = hypothesis_capture {
             flush_iteration(
                 &mut saturation_state,
@@ -77,7 +77,7 @@ fn main() {
             continue;
         }
 
-        let conclusion_capture = conclusion_match.captures(&mut line);
+        let conclusion_capture = conclusion_match.captures(&line);
         if conclusion_capture.is_some() {
             flush_iteration(
                 &mut saturation_state,
