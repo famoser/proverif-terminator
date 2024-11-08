@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
-use crate::Cli;
 use crate::printer::Printer;
+use crate::Cli;
+use std::fmt::{Display, Formatter};
 
 pub struct SaturationState {
     saturation_progress: Option<SaturationProgress>,
@@ -64,30 +64,21 @@ impl Display for SaturationProgress {
         write!(
             f,
             "{} ({}c, {}h, {}q)",
-            self.iteration, self.with_conclusion_selected, self.with_hypothesis_selected, self.in_queue,
+            self.iteration,
+            self.with_conclusion_selected,
+            self.with_hypothesis_selected,
+            self.in_queue,
         )
     }
 }
 
 impl SaturationState {
-    pub fn set_hypothesis_selected(
-        &mut self,
-        fact: String,
-        fact_number: u32,
-    ) {
-        self.hypothesis_selected = Some(HypothesisSelected {
-            fact,
-            fact_number,
-        });
+    pub fn set_hypothesis_selected(&mut self, fact: String, fact_number: u32) {
+        self.hypothesis_selected = Some(HypothesisSelected { fact, fact_number });
     }
 
-    pub fn set_conclusion_selected(
-        &mut self,
-        fact: String,
-    ) {
-        self.conclusion_selected = Some(ConclusionSelected {
-            fact,
-        });
+    pub fn set_conclusion_selected(&mut self, fact: String) {
+        self.conclusion_selected = Some(ConclusionSelected { fact });
     }
 
     pub fn set_saturation_progress(
@@ -113,14 +104,19 @@ impl SaturationState {
         }
     }
 
-    fn flush_hypothesis_iteration(&mut self, hypothesis_selected: &HypothesisSelected, printer: &mut Printer) {
+    fn flush_hypothesis_iteration(
+        &mut self,
+        hypothesis_selected: &HypothesisSelected,
+        printer: &mut Printer,
+    ) {
         let mut last_fact_count = 0;
         if let Some(last_iteration_summary) = self.last_iteration_summary.clone() {
             // if different fact, fill history
             if last_iteration_summary.hypothesis_selected_fact != hypothesis_selected.fact {
                 let fact = last_iteration_summary.hypothesis_selected_fact.clone();
                 let fact_count = last_iteration_summary.hypothesis_selected_fact_count;
-                self.hypothesis_selected_fact_history.push((fact.clone(), fact_count));
+                self.hypothesis_selected_fact_history
+                    .push((fact.clone(), fact_count));
 
                 self.print_hypothesis_selected_fact(printer, &fact, fact_count, true);
             } else {
@@ -137,17 +133,22 @@ impl SaturationState {
             printer,
             &summary.hypothesis_selected_fact,
             summary.hypothesis_selected_fact_count,
-            false
+            false,
         );
 
         self.last_iteration_summary = Some(summary);
     }
 
-    fn flush_conclusion_iteration(&mut self, conclusion_selected: &ConclusionSelected, printer: &mut Printer) {
+    fn flush_conclusion_iteration(
+        &mut self,
+        conclusion_selected: &ConclusionSelected,
+        printer: &mut Printer,
+    ) {
         if let Some(last_iteration_summary) = self.last_iteration_summary.clone() {
             let fact = last_iteration_summary.hypothesis_selected_fact.clone();
             let fact_count = last_iteration_summary.hypothesis_selected_fact_count;
-            self.hypothesis_selected_fact_history.push((fact, fact_count));
+            self.hypothesis_selected_fact_history
+                .push((fact, fact_count));
 
             self.last_iteration_summary = None
         }
@@ -155,7 +156,13 @@ impl SaturationState {
         self.print_conclusion_selected_fact(printer, &conclusion_selected.fact)
     }
 
-    fn print_hypothesis_selected_fact(&self, printer: &mut Printer, fact: &String, fact_count: u32, persistent: bool) {
+    fn print_hypothesis_selected_fact(
+        &self,
+        printer: &mut Printer,
+        fact: &String,
+        fact_count: u32,
+        persistent: bool,
+    ) {
         let mut line = String::new();
         if self.print_hypothesis_selected_fact {
             line = format!("Selected in hypothesis: {}", fact);
@@ -168,7 +175,11 @@ impl SaturationState {
         }
 
         if self.print_hypothesis_selected_fact || self.print_saturation_progress {
-            let overwrite_tag = if persistent { None } else  { Some("hypothesis_selected_fact") };
+            let overwrite_tag = if persistent {
+                None
+            } else {
+                Some("hypothesis_selected_fact")
+            };
             printer.print_tag_aware(format!("{}", line), overwrite_tag);
         }
     }

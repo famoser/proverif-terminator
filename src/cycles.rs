@@ -1,6 +1,6 @@
-use std::fmt::Debug;
 use crate::printer::Printer;
 use crate::Cli;
+use std::fmt::Debug;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct Cycle {
@@ -31,11 +31,7 @@ pub fn initialize_cycle_detector(cli: &Cli) -> CycleDetector {
 }
 
 impl CycleDetector {
-    pub fn check_cycles(
-        &mut self,
-        history: &[(String, u32)],
-        printer: &mut Printer,
-    ) {
+    pub fn check_cycles(&mut self, history: &[(String, u32)], printer: &mut Printer) {
         // early out if no output
         if !self.print_cycles {
             return;
@@ -190,10 +186,7 @@ fn test_cycles_one_cycle() {
         ("a".to_string(), 1),
         ("a".to_string(), 1),
     ];
-    assert_eq!(
-        find_cycles(&history),
-        Some(Cycle { size: 1, repeat: 2 })
-    );
+    assert_eq!(find_cycles(&history), Some(Cycle { size: 1, repeat: 2 }));
 
     let history = vec![
         ("a".to_string(), 1),
@@ -202,10 +195,7 @@ fn test_cycles_one_cycle() {
         ("a".to_string(), 2),
         ("a".to_string(), 1),
     ];
-    assert_eq!(
-        find_cycles(&history),
-        Some(Cycle { size: 2, repeat: 2 })
-    );
+    assert_eq!(find_cycles(&history), Some(Cycle { size: 2, repeat: 2 }));
 }
 
 #[test]
@@ -218,8 +208,5 @@ fn test_find_number_of_cycles_multiple_cycles() {
         ("a".to_string(), 1),
         ("a".to_string(), 2),
     ];
-    assert_eq!(
-        find_cycles(&history),
-        Some(Cycle { size: 2, repeat: 3 })
-    );
+    assert_eq!(find_cycles(&history), Some(Cycle { size: 2, repeat: 3 }));
 }

@@ -1,15 +1,15 @@
 mod cycles;
 mod fact_checker;
-mod saturation_state;
 mod printer;
+mod saturation_state;
 
 use crate::cycles::{initialize_cycle_detector, CycleDetector};
 use crate::fact_checker::{initialize_fact_checker, FactChecker};
+use crate::printer::{initialize_printer, Printer};
 use crate::saturation_state::{initialize_saturation_state, SaturationState};
 use clap::Parser;
 use regex::{Captures, Regex};
 use std::io::{self};
-use crate::printer::{initialize_printer, Printer};
 
 #[derive(Parser)]
 struct Cli {
@@ -49,9 +49,7 @@ fn main() {
     let hypothesis_match =
         Regex::new(r"Rule with hypothesis fact (?<fact_number>[0-9]+) selected: (?<fact>.+)")
             .unwrap();
-    let conclusion_match =
-        Regex::new(r"Rule with conclusion selected:")
-            .unwrap();
+    let conclusion_match = Regex::new(r"Rule with conclusion selected:").unwrap();
     let queue_match =
         Regex::new(r"(?<rules_inserted_count>\d+) rules inserted\. Base: (?<rules_base_count>\d+) rules \((?<rules_conclusion_selected_count>\d+) with conclusion selected\)\. Queue: (?<rules_queue_count>\d+) rules\.")
             .unwrap();
@@ -68,7 +66,12 @@ fn main() {
 
         let hypothesis_capture = hypothesis_match.captures(&mut line);
         if let Some(hypothesis_capture) = hypothesis_capture {
-            flush_iteration(&mut saturation_state, &fact_checker, &mut cycle_detector, &mut printer);
+            flush_iteration(
+                &mut saturation_state,
+                &fact_checker,
+                &mut cycle_detector,
+                &mut printer,
+            );
 
             process_hypothesis_selected(&hypothesis_capture, &mut saturation_state);
             continue;
@@ -76,7 +79,12 @@ fn main() {
 
         let conclusion_capture = conclusion_match.captures(&mut line);
         if conclusion_capture.is_some() {
-            flush_iteration(&mut saturation_state, &fact_checker, &mut cycle_detector, &mut printer);
+            flush_iteration(
+                &mut saturation_state,
+                &fact_checker,
+                &mut cycle_detector,
+                &mut printer,
+            );
 
             line = String::new();
             stdin.read_line(&mut line).unwrap();
@@ -90,7 +98,7 @@ fn flush_iteration(
     saturation_state: &mut SaturationState,
     fact_checker: &FactChecker,
     cycle_detector: &mut CycleDetector,
-    printer: &mut Printer
+    printer: &mut Printer,
 ) {
     saturation_state.flush_iteration(printer);
 
@@ -101,10 +109,7 @@ fn flush_iteration(
     }
 }
 
-fn process_queue_status(
-    captures: &Captures,
-    saturation_state: &mut SaturationState,
-) {
+fn process_queue_status(captures: &Captures, saturation_state: &mut SaturationState) {
     let rules_inserted_count = captures.name("rules_inserted_count").unwrap().as_str();
     let rules_base_count = captures.name("rules_base_count").unwrap().as_str();
     let rules_conclusion_selected_count: &str = captures
@@ -118,13 +123,15 @@ fn process_queue_status(
     let with_conclusion_selected = rules_conclusion_selected_count.parse::<u32>().unwrap_or(0);
     let with_hypothesis_selected =
         rules_base_count.parse::<u32>().unwrap_or(0) - with_conclusion_selected;
-    saturation_state.set_saturation_progress(iteration, with_conclusion_selected, with_hypothesis_selected, in_queue);
+    saturation_state.set_saturation_progress(
+        iteration,
+        with_conclusion_selected,
+        with_hypothesis_selected,
+        in_queue,
+    );
 }
 
-fn process_hypothesis_selected(
-    captures: &Captures,
-    saturation_state: &mut SaturationState,
-) {
+fn process_hypothesis_selected(captures: &Captures, saturation_state: &mut SaturationState) {
     let fact = captures.name("fact").unwrap().as_str();
     let fact_number = captures.name("fact_number").unwrap().as_str();
 
@@ -132,9 +139,6 @@ fn process_hypothesis_selected(
     saturation_state.set_hypothesis_selected(fact.to_string(), fact_number);
 }
 
-fn process_conclusion_selected(
-    fact: String,
-    saturation_state: &mut SaturationState,
-) {
+fn process_conclusion_selected(fact: String, saturation_state: &mut SaturationState) {
     saturation_state.set_conclusion_selected(fact);
 }

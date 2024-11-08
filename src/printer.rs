@@ -24,16 +24,13 @@ impl Printer {
         self.print_tag_aware(line, None);
     }
 
-    pub fn print_info(&mut self, header: String, line: String)
-    {
+    pub fn print_info(&mut self, header: String, line: String) {
         self.print(format!("\x1b[93m{}\x1b[0m: {}", header, line));
     }
-    pub fn print_warning(&mut self, header: String, line: String)
-    {
+    pub fn print_warning(&mut self, header: String, line: String) {
         self.print(format!("\x1b[38;5;208m{}\x1b[0m: {}", header, line));
     }
     pub fn print_error(&mut self, header: String, line: String) {
-
         self.print(format!("\x1b[91m{}\x1b[0m: {}", header, line));
     }
 }
