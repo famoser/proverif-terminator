@@ -180,7 +180,7 @@ impl SaturationState {
             } else {
                 Some("hypothesis_selected_fact")
             };
-            printer.print_tag_aware(format!("{}", line), overwrite_tag);
+            printer.print_tag_aware(line.to_string(), overwrite_tag);
         }
     }
 
@@ -194,7 +194,7 @@ impl SaturationState {
         }
 
         if self.print_conclusion_selected_fact || self.print_saturation_progress {
-            printer.print(format!("{}", line));
+            printer.print(line.to_string());
         }
     }
 }

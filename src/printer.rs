@@ -7,15 +7,15 @@ pub fn initialize_printer() -> Printer {
 impl Printer {
     pub fn print_tag_aware(&mut self, line: String, overwrite_tag: Option<&'static str>) {
         let mut previous_line_ending = String::new();
-        if let Some(last_tag) = self.last_tag.clone() {
-            if let Some(overwrite_tag) = overwrite_tag.clone() {
+        if let Some(last_tag) = self.last_tag {
+            if let Some(overwrite_tag) = overwrite_tag {
                 if last_tag != overwrite_tag {
                     previous_line_ending = "\n".to_string();
                 }
             }
         }
 
-        self.last_tag = overwrite_tag.clone();
+        self.last_tag = overwrite_tag;
         let line_ending = if overwrite_tag.is_none() { "\n" } else { "\r" };
         print!("{previous_line_ending}{line}{line_ending}");
     }
