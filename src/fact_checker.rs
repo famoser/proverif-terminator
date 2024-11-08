@@ -1,7 +1,7 @@
+use crate::printer::Printer;
 use crate::Cli;
 use regex::Regex;
 use std::collections::HashMap;
-use crate::printer::Printer;
 
 pub struct FactChecker {
     regex_map: HashMap<&'static str, Vec<Regex>>,
