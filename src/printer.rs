@@ -12,8 +12,6 @@ impl Printer {
                 if last_tag != overwrite_tag {
                     previous_line_ending = "\n".to_string();
                 }
-            } else {
-                previous_line_ending = "\n".to_string();
             }
         }
 
