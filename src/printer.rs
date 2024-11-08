@@ -1,87 +1,41 @@
-use crate::Cli;
-use std::fmt::{Display, Formatter};
-
-pub struct QueuePrinter {
-    queue_state: Option<QueueState>,
-    last_transient_print: String,
-    print_queue_state: bool,
+pub struct Printer {
+    last_tag: Option<&'static str>,
 }
-
-#[derive(Copy, Clone)]
-struct QueueState {
-    with_hypothesis_selected: u32,
-    with_conclusion_selected: u32,
-    in_queue: u32,
+pub fn initialize_printer() -> Printer {
+    Printer { last_tag: None }
 }
-
-impl Display for QueueState {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "q: {}, h: {}, c: {}",
-            self.in_queue, self.with_hypothesis_selected, self.with_conclusion_selected,
-        )
-    }
-}
-
-pub fn initialize_queue_printer(cli: &Cli) -> QueuePrinter {
-    let all = cli.all || cli.print_all;
-
-    QueuePrinter {
-        queue_state: None,
-        last_transient_print: String::from(""),
-        print_queue_state: all || cli.print_queue_state,
-    }
-}
-
-pub trait Printer {
-    fn print(&mut self, line: String, persistent: bool);
-    fn print_transient(&mut self, line: String);
-    fn print_persistent(&mut self, line: String);
-}
-
-impl Printer for QueuePrinter {
-    fn print(&mut self, line: String, persistent: bool) {
-        if persistent {
-            self.print_persistent(line);
-        } else {
-            self.print_transient(line);
+impl Printer {
+    pub fn print_tag_aware(&mut self, line: String, overwrite_tag: Option<&'static str>) {
+        let mut previous_line_ending = String::new();
+        if let Some(last_tag) = self.last_tag.clone() {
+            if let Some(overwrite_tag) = overwrite_tag.clone() {
+                if last_tag != overwrite_tag {
+                    previous_line_ending = "\n".to_string();
+                }
+            } else {
+                previous_line_ending = "\n".to_string();
+            }
         }
+
+        self.last_tag = overwrite_tag.clone();
+        let line_ending = if overwrite_tag.is_none() { "\n" } else { "\r" };
+        print!("{previous_line_ending}{line}{line_ending}");
     }
 
-    fn print_transient(&mut self, line: String) {
-        self.last_transient_print = line.clone();
-        self.print_internal(&self.last_transient_print, false);
+    pub fn print(&mut self, line: String) {
+        self.print_tag_aware(line, None);
     }
 
-    fn print_persistent(&mut self, line: String) {
-        self.last_transient_print = String::from("");
-        self.print_internal(&line, true);
+    pub fn print_info(&mut self, header: String, line: String)
+    {
+        self.print(format!("\x1b[93m{}\x1b[0m: {}", header, line));
     }
-}
-
-impl QueuePrinter {
-    pub fn update_queue_state(
-        &mut self,
-        in_queue: u32,
-        with_hypothesis_selected: u32,
-        with_conclusion_selected: u32,
-    ) {
-        self.queue_state = Some(QueueState {
-            in_queue,
-            with_hypothesis_selected,
-            with_conclusion_selected,
-        });
-
-        self.print_internal(&self.last_transient_print, false);
+    pub fn print_warning(&mut self, header: String, line: String)
+    {
+        self.print(format!("\x1b[38;5;208m{}\x1b[0m: {}", header, line));
     }
+    pub fn print_error(&mut self, header: String, line: String) {
 
-    fn print_internal(&self, line: &String, persistent: bool) {
-        let line_ending = if persistent { "\n" } else { "\r" };
-        if self.print_queue_state && self.queue_state.is_some() {
-            print!("({0}): {line}{line_ending}", self.queue_state.unwrap());
-        } else {
-            print!("{line}{line_ending}");
-        }
+        self.print(format!("\x1b[91m{}\x1b[0m: {}", header, line));
     }
 }
