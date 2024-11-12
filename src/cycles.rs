@@ -17,20 +17,20 @@ pub struct CycleDetector {
     print_cycles: bool,
 }
 
-pub fn initialize_cycle_detector(cli: &Cli) -> CycleDetector {
-    let all = cli.all || cli.print_all;
-
-    CycleDetector {
-        last_cycle: None,
-        last_cycle_end: 0,
-
-        last_history_length: 0,
-
-        print_cycles: all || cli.print_cycles,
-    }
-}
-
 impl CycleDetector {
+    pub fn new(cli: &Cli) -> Self {
+        let all = cli.all || cli.print_all;
+
+        CycleDetector {
+            last_cycle: None,
+            last_cycle_end: 0,
+
+            last_history_length: 0,
+
+            print_cycles: all || cli.print_cycles,
+        }
+    }
+
     pub fn check_cycles(&mut self, history: &[(String, u32)], printer: &mut Printer) {
         // early out if no output
         if !self.print_cycles {

@@ -7,14 +7,14 @@ pub struct FactChecker {
     regex_map: HashMap<&'static str, Vec<Regex>>,
 }
 
-pub fn initialize_fact_checker(cli: &Cli) -> FactChecker {
-    let templates_map = compose_targets(cli);
-    let regex_map = compile_targets(templates_map);
-
-    FactChecker { regex_map }
-}
-
 impl FactChecker {
+    pub fn new(cli: &Cli) -> Self {
+        let templates_map = compose_targets(cli);
+        let regex_map = compile_targets(templates_map);
+
+        FactChecker { regex_map }
+    }
+
     pub fn check(&self, fact: &str, printer: &mut Printer) {
         for group in self.regex_map.iter() {
             let group_header = group.0;

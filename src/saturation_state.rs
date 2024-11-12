@@ -42,23 +42,6 @@ struct IterationSummary {
     conclusion_selected_fact: Option<String>,
 }
 
-pub fn initialize_saturation_state(cli: &Cli) -> SaturationState {
-    let all = cli.all || cli.print_all;
-
-    SaturationState {
-        saturation_progress: None,
-        hypothesis_selected: None,
-        conclusion_selected: None,
-
-        last_iteration_summary: None,
-        hypothesis_selected_fact_history: Vec::new(),
-
-        print_saturation_progress: all || cli.print_saturation_progress,
-        print_hypothesis_selected_fact: all || cli.print_hypothesis_selected_fact,
-        print_conclusion_selected_fact: all || cli.print_conclusion_selected_fact,
-    }
-}
-
 impl Display for SaturationProgress {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -73,6 +56,23 @@ impl Display for SaturationProgress {
 }
 
 impl SaturationState {
+    pub fn new(cli: &Cli) -> Self {
+        let all = cli.all || cli.print_all;
+
+        SaturationState {
+            saturation_progress: None,
+            hypothesis_selected: None,
+            conclusion_selected: None,
+
+            last_iteration_summary: None,
+            hypothesis_selected_fact_history: Vec::new(),
+
+            print_saturation_progress: all || cli.print_saturation_progress,
+            print_hypothesis_selected_fact: all || cli.print_hypothesis_selected_fact,
+            print_conclusion_selected_fact: all || cli.print_conclusion_selected_fact,
+        }
+    }
+
     pub fn set_hypothesis_selected(&mut self, fact: String, fact_number: u32) {
         self.hypothesis_selected = Some(HypothesisSelected { fact, fact_number });
     }

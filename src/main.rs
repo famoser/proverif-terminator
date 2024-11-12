@@ -3,10 +3,10 @@ mod fact_checker;
 mod printer;
 mod saturation_state;
 
-use crate::cycles::{initialize_cycle_detector, CycleDetector};
-use crate::fact_checker::{initialize_fact_checker, FactChecker};
-use crate::printer::{initialize_printer, Printer};
-use crate::saturation_state::{initialize_saturation_state, SaturationState};
+use crate::cycles::{CycleDetector};
+use crate::fact_checker::{FactChecker};
+use crate::printer::{Printer};
+use crate::saturation_state::{SaturationState};
 use clap::Parser;
 use regex::{Captures, Regex};
 use std::io::{self};
@@ -38,12 +38,12 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
 
-    let mut saturation_state = initialize_saturation_state(&cli);
+    let mut saturation_state = SaturationState::new(&cli);
 
-    let fact_checker = initialize_fact_checker(&cli);
-    let mut cycle_detector = initialize_cycle_detector(&cli);
+    let fact_checker = FactChecker::new(&cli);
+    let mut cycle_detector = CycleDetector::new(&cli);
 
-    let mut printer = initialize_printer();
+    let mut printer = Printer::new();
 
     let stdin = io::stdin();
     let hypothesis_match =

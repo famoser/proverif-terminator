@@ -1,10 +1,11 @@
 pub struct Printer {
     last_tag: Option<&'static str>,
 }
-pub fn initialize_printer() -> Printer {
-    Printer { last_tag: None }
-}
 impl Printer {
+    pub fn new() -> Self {
+        Printer { last_tag: None }
+    }
+
     pub fn print_tag_aware(&mut self, line: String, overwrite_tag: Option<&'static str>) {
         let mut previous_line_ending = String::new();
         if let Some(last_tag) = self.last_tag {
