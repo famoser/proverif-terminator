@@ -38,8 +38,8 @@ struct ConclusionSelected {
 
 #[derive(Clone)]
 struct IterationSummary {
-    hypothesis_selected_fact: String,
-    hypothesis_selected_fact_count: u32,
+    hypothesis_selected_fact: Option<String>,
+    conclusion_selected_fact: Option<String>,
 }
 
 pub fn initialize_saturation_state(cli: &Cli) -> SaturationState {
@@ -102,6 +102,10 @@ impl SaturationState {
         } else if let Some(conclusion_selected) = self.conclusion_selected.clone() {
             self.flush_conclusion_iteration(&conclusion_selected, printer);
         }
+
+        self.hypothesis_selected = None;
+        self.conclusion_selected = None;
+        self.saturation_progress = None;
     }
 
     fn flush_hypothesis_iteration(
@@ -109,34 +113,20 @@ impl SaturationState {
         hypothesis_selected: &HypothesisSelected,
         printer: &mut Printer,
     ) {
-        let mut last_fact_count = 0;
+        let mut same_as_before = false;
         if let Some(last_iteration_summary) = self.last_iteration_summary.clone() {
             // if different fact, fill history
-            if last_iteration_summary.hypothesis_selected_fact != hypothesis_selected.fact {
-                let fact = last_iteration_summary.hypothesis_selected_fact.clone();
-                let fact_count = last_iteration_summary.hypothesis_selected_fact_count;
-                self.hypothesis_selected_fact_history
-                    .push((fact.clone(), fact_count));
-
-                self.print_hypothesis_selected_fact(printer, &fact, fact_count, true);
-            } else {
-                // else keep count from before
-                last_fact_count = last_iteration_summary.hypothesis_selected_fact_count
+            if let Some(hypothesis_selected_fact) = last_iteration_summary.hypothesis_selected_fact {
+                same_as_before = hypothesis_selected_fact == hypothesis_selected.fact
             }
         }
 
-        let summary = IterationSummary {
-            hypothesis_selected_fact: hypothesis_selected.fact.clone(),
-            hypothesis_selected_fact_count: last_fact_count + 1,
-        };
-        self.print_hypothesis_selected_fact(
-            printer,
-            &summary.hypothesis_selected_fact,
-            summary.hypothesis_selected_fact_count,
-            false,
-        );
+        self.print_iteration(printer, "hypothesis", self.print_hypothesis_selected_fact, &hypothesis_selected.fact, same_as_before);
 
-        self.last_iteration_summary = Some(summary);
+        self.last_iteration_summary = Some(IterationSummary {
+            hypothesis_selected_fact: Some(hypothesis_selected.fact.clone()),
+            conclusion_selected_fact: None,
+        });
     }
 
     fn flush_conclusion_iteration(
@@ -144,56 +134,43 @@ impl SaturationState {
         conclusion_selected: &ConclusionSelected,
         printer: &mut Printer,
     ) {
+        let mut same_as_before = false;
         if let Some(last_iteration_summary) = self.last_iteration_summary.clone() {
-            let fact = last_iteration_summary.hypothesis_selected_fact.clone();
-            let fact_count = last_iteration_summary.hypothesis_selected_fact_count;
-            self.hypothesis_selected_fact_history
-                .push((fact, fact_count));
-
-            self.last_iteration_summary = None
+            // if different fact, fill history
+            if let Some(conclusion_selected_fact) = last_iteration_summary.conclusion_selected_fact {
+                same_as_before = conclusion_selected_fact == conclusion_selected.fact
+            }
         }
 
-        self.print_conclusion_selected_fact(printer, &conclusion_selected.fact)
+        self.print_iteration(printer, "conclusion", self.print_conclusion_selected_fact, &conclusion_selected.fact, same_as_before);
+
+        self.last_iteration_summary = Some(IterationSummary {
+            hypothesis_selected_fact: Some(conclusion_selected.fact.clone()),
+            conclusion_selected_fact: None,
+        });
     }
 
-    fn print_hypothesis_selected_fact(
+
+    fn print_iteration(
         &self,
         printer: &mut Printer,
+        location: &str,
+        print_location: bool,
         fact: &String,
-        fact_count: u32,
-        persistent: bool,
+        same_as_before: bool
     ) {
         let mut line = String::new();
-        if self.print_hypothesis_selected_fact {
-            line = format!("Selected in hypothesis: {}", fact);
-            if fact_count > 1 {
-                line = format!("{line} ({}x)", fact_count);
+        if print_location {
+            line = format!("Selected in {}: {}", location, fact);
+            if same_as_before {
+                line = format!("{line} (again)");
             }
         }
         if self.print_saturation_progress && self.saturation_progress.is_some() {
-            line = format!("{0}\t\t {line}", self.saturation_progress.unwrap());
+            line = format!("{0}\t{line}", self.saturation_progress.unwrap());
         }
 
-        if self.print_hypothesis_selected_fact || self.print_saturation_progress {
-            let overwrite_tag = if persistent {
-                None
-            } else {
-                Some("hypothesis_selected_fact")
-            };
-            printer.print_tag_aware(line.to_string(), overwrite_tag);
-        }
-    }
-
-    fn print_conclusion_selected_fact(&self, printer: &mut Printer, fact: &String) {
-        let mut line = String::new();
-        if self.print_conclusion_selected_fact {
-            line = format!("Selected in conclusion: {}", fact);
-        }
-        if self.print_saturation_progress && self.saturation_progress.is_some() {
-            line = format!("{0}\t\t {line}", self.saturation_progress.unwrap());
-        }
-
-        if self.print_conclusion_selected_fact || self.print_saturation_progress {
+        if print_location || self.print_saturation_progress {
             printer.print(line.to_string());
         }
     }

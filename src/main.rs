@@ -50,6 +50,7 @@ fn main() {
         Regex::new(r"Rule with hypothesis fact (?<fact_number>[0-9]+) selected: (?<fact>.+)")
             .unwrap();
     let conclusion_match = Regex::new(r"Rule with conclusion selected:").unwrap();
+    let conclusion_fact_match = Regex::new(r".+ -> (?<fact>.+)").unwrap();
     let queue_match =
         Regex::new(r"(?<rules_inserted_count>\d+) rules inserted\. Base: (?<rules_base_count>\d+) rules \((?<rules_conclusion_selected_count>\d+) with conclusion selected\)\. Queue: (?<rules_queue_count>\d+) rules\.")
             .unwrap();
@@ -88,7 +89,10 @@ fn main() {
 
             line = String::new();
             stdin.read_line(&mut line).unwrap();
-            process_conclusion_selected(line.trim().to_string(), &mut saturation_state);
+            let conclusion_fact_capture = conclusion_fact_match.captures(&line);
+            if let Some(conclusion_fact_capture) = conclusion_fact_capture {
+                process_conclusion_selected(&conclusion_fact_capture, &mut saturation_state);
+            }
             continue;
         }
     }
@@ -139,6 +143,8 @@ fn process_hypothesis_selected(captures: &Captures, saturation_state: &mut Satur
     saturation_state.set_hypothesis_selected(fact.to_string(), fact_number);
 }
 
-fn process_conclusion_selected(fact: String, saturation_state: &mut SaturationState) {
-    saturation_state.set_conclusion_selected(fact);
+fn process_conclusion_selected(captures: &Captures, saturation_state: &mut SaturationState) {
+    let fact = captures.name("fact").unwrap().as_str();
+
+    saturation_state.set_conclusion_selected(fact.to_string());
 }
