@@ -1,5 +1,4 @@
-use crate::printer::Printer;
-use crate::Cli;
+use crate::iteration_summary::IterationSummary;
 use std::fmt::Debug;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -13,30 +12,19 @@ pub struct CycleDetector {
     last_cycle_end: usize,
 
     last_history_length: usize,
-
-    print_cycles: bool,
 }
 
 impl CycleDetector {
-    pub fn new(cli: &Cli) -> Self {
-        let all = cli.all || cli.print_all;
-
+    pub fn new() -> Self {
         CycleDetector {
             last_cycle: None,
             last_cycle_end: 0,
 
             last_history_length: 0,
-
-            print_cycles: all || cli.print_cycles,
         }
     }
 
-    pub fn check_cycles(&mut self, history: &[(String, u32)], printer: &mut Printer) {
-        // early out if no output
-        if !self.print_cycles {
-            return;
-        }
-
+    pub fn check_cycles(&mut self, history: &[(String, u32)], printer: &mut IterationSummary) {
         // early out if no change in history
         // this assumes that the passed fact histories are related.
         if self.last_history_length == history.len() {
@@ -57,17 +45,17 @@ impl CycleDetector {
             self.last_cycle_end = history.len() + cycle.size;
 
             if cycle.size * cycle.repeat > 1000 {
-                printer.print_error("Cycle".to_string(), format!("{:?}", cycle));
+                printer.add_error("Cycle".to_string(), format!("{:?}", cycle));
                 return;
             }
 
             if cycle.size * cycle.repeat > 100 {
-                printer.print_warning("Cycle".to_string(), format!("{:?}", cycle));
+                printer.add_warning("Cycle".to_string(), format!("{:?}", cycle));
                 return;
             }
 
             if cycle.size * cycle.repeat > 10 {
-                printer.print_info("Cycle".to_string(), format!("{:?}", cycle));
+                printer.add_info("Cycle".to_string(), format!("{:?}", cycle));
             }
         }
     }

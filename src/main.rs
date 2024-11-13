@@ -1,12 +1,13 @@
 mod cycles;
 mod fact_checker;
+mod iteration_summary;
 mod printer;
 mod saturation_state;
 
-use crate::cycles::{CycleDetector};
-use crate::fact_checker::{FactChecker};
-use crate::printer::{Printer};
-use crate::saturation_state::{SaturationState};
+use crate::cycles::CycleDetector;
+use crate::fact_checker::FactChecker;
+use crate::printer::Printer;
+use crate::saturation_state::SaturationState;
 use clap::Parser;
 use regex::{Captures, Regex};
 use std::io::{self};
@@ -17,31 +18,20 @@ struct Cli {
     all: bool,
 
     #[arg(short, long)]
-    print_all: bool,
-    #[arg(long)]
-    print_selected_facts: bool,
-    #[arg(long)]
-    print_cycles: bool,
-    #[arg(long)]
-    print_saturation_progress: bool,
-    #[arg(long)]
-    print_hypothesis_selected_fact: bool,
-    #[arg(long)]
-    print_conclusion_selected_fact: bool,
-
-    #[arg(short, long)]
     detect_all: bool,
     #[arg(long)]
     detect_high_counters: bool,
+    #[arg(long)]
+    detect_cycles: bool,
 }
 
 fn main() {
     let cli = Cli::parse();
 
-    let mut saturation_state = SaturationState::new(&cli);
+    let mut saturation_state = SaturationState::new();
 
     let fact_checker = FactChecker::new(&cli);
-    let mut cycle_detector = CycleDetector::new(&cli);
+    let mut cycle_detector = CycleDetector::new();
 
     let mut printer = Printer::new();
 
@@ -68,30 +58,46 @@ fn main() {
         let hypothesis_capture = hypothesis_match.captures(&line);
         if let Some(hypothesis_capture) = hypothesis_capture {
             flush_iteration(
+                &cli,
                 &mut saturation_state,
                 &fact_checker,
                 &mut cycle_detector,
                 &mut printer,
             );
 
-            process_hypothesis_selected(&hypothesis_capture, &mut saturation_state);
+            let mut query = String::new();
+            stdin.read_line(&mut query).unwrap();
+            saturation_state.set_query(query.clone().trim().to_string());
+
+            let fact = hypothesis_capture.name("fact").unwrap().as_str();
+            let fact_number = hypothesis_capture.name("fact_number").unwrap().as_str();
+
+            let fact_number = fact_number.parse::<u32>().unwrap_or(0);
+            saturation_state.set_hypothesis_fact_selected(fact.to_string(), fact_number);
             continue;
         }
 
         let conclusion_capture = conclusion_match.captures(&line);
         if conclusion_capture.is_some() {
             flush_iteration(
+                &cli,
                 &mut saturation_state,
                 &fact_checker,
                 &mut cycle_detector,
                 &mut printer,
             );
 
-            line = String::new();
-            stdin.read_line(&mut line).unwrap();
-            let conclusion_fact_capture = conclusion_fact_match.captures(&line);
+            let mut query = String::new();
+            stdin.read_line(&mut query).unwrap();
+            saturation_state.set_query(query.clone().trim().to_string());
+
+            let conclusion_fact_capture = conclusion_fact_match.captures(&query);
             if let Some(conclusion_fact_capture) = conclusion_fact_capture {
-                process_conclusion_selected(&conclusion_fact_capture, &mut saturation_state);
+                let fact = conclusion_fact_capture.name("fact").unwrap().as_str();
+
+                saturation_state.set_conclusion_fact_selected(fact.to_string());
+            } else {
+                saturation_state.set_conclusion_fact_selected(query.trim().to_string());
             }
             continue;
         }
@@ -99,17 +105,27 @@ fn main() {
 }
 
 fn flush_iteration(
+    cli: &Cli,
     saturation_state: &mut SaturationState,
     fact_checker: &FactChecker,
     cycle_detector: &mut CycleDetector,
-    printer: &mut Printer,
+    printer: &Printer,
 ) {
-    saturation_state.flush_iteration(printer);
+    saturation_state.complete_iteration(printer);
+    if let Some(mut iteration_printer) = saturation_state.create_last_iteration_printer() {
+        if cli.detect_all || cli.detect_cycles {
+            cycle_detector.check_cycles(
+                &saturation_state.hypothesis_selected_fact_history,
+                &mut iteration_printer,
+            );
+        }
 
-    // check for cycles & dubious facts
-    cycle_detector.check_cycles(&saturation_state.hypothesis_selected_fact_history, printer);
-    if let Some(history) = saturation_state.hypothesis_selected_fact_history.last() {
-        fact_checker.check(&history.0, printer)
+        if let Some(history) = saturation_state.hypothesis_selected_fact_history.last() {
+            fact_checker.check(&history.0, &mut iteration_printer)
+        }
+
+        // print
+        iteration_printer.print(printer)
     }
 }
 
@@ -133,18 +149,4 @@ fn process_queue_status(captures: &Captures, saturation_state: &mut SaturationSt
         with_hypothesis_selected,
         in_queue,
     );
-}
-
-fn process_hypothesis_selected(captures: &Captures, saturation_state: &mut SaturationState) {
-    let fact = captures.name("fact").unwrap().as_str();
-    let fact_number = captures.name("fact_number").unwrap().as_str();
-
-    let fact_number = fact_number.parse::<u32>().unwrap_or(0);
-    saturation_state.set_hypothesis_selected(fact.to_string(), fact_number);
-}
-
-fn process_conclusion_selected(captures: &Captures, saturation_state: &mut SaturationState) {
-    let fact = captures.name("fact").unwrap().as_str();
-
-    saturation_state.set_conclusion_selected(fact.to_string());
 }

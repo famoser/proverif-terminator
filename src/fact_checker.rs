@@ -1,4 +1,4 @@
-use crate::printer::Printer;
+use crate::iteration_summary::IterationSummary;
 use crate::Cli;
 use regex::Regex;
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ impl FactChecker {
         FactChecker { regex_map }
     }
 
-    pub fn check(&self, fact: &str, printer: &mut Printer) {
+    pub fn check(&self, fact: &str, printer: &mut IterationSummary) {
         for group in self.regex_map.iter() {
             let group_header = group.0;
             let group_entries = group.1;
@@ -25,7 +25,7 @@ impl FactChecker {
                     continue;
                 }
 
-                printer.print_warning(format!("{} pattern", group_header), regex.to_string());
+                printer.add_warning(format!("{} pattern", group_header), regex.to_string());
             }
         }
     }

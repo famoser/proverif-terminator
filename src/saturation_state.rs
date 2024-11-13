@@ -1,18 +1,28 @@
+use crate::iteration_summary::IterationSummary;
 use crate::printer::Printer;
-use crate::Cli;
 use std::fmt::{Display, Formatter};
 
 pub struct SaturationState {
-    saturation_progress: Option<SaturationProgress>,
-    hypothesis_selected: Option<HypothesisSelected>,
-    conclusion_selected: Option<ConclusionSelected>,
+    progress: Option<SaturationProgress>,
+    query: Option<String>,
+    hypothesis_fact_selected: Option<SelectedFact>,
+    conclusion_fact_selected: Option<SelectedFact>,
 
+    queue_entries: Vec<String>,
+
+    iterations: Vec<Iteration>,
     pub hypothesis_selected_fact_history: Vec<(String, u32)>,
-    last_iteration_summary: Option<IterationSummary>,
+}
 
-    print_saturation_progress: bool,
-    print_hypothesis_selected_fact: bool,
-    print_conclusion_selected_fact: bool,
+struct Iteration {
+    progress: SaturationProgress,
+    #[allow(dead_code)] // not yet used
+    query: String,
+    hypothesis_fact_selected: Option<SelectedFact>,
+    conclusion_fact_selected: Option<SelectedFact>,
+
+    #[allow(dead_code)] // not yet used
+    added_to_queue: Vec<String>,
 }
 
 #[derive(Copy, Clone)]
@@ -24,22 +34,11 @@ struct SaturationProgress {
 }
 
 #[derive(Clone)]
-struct HypothesisSelected {
+struct SelectedFact {
     fact: String,
 
     #[allow(dead_code)] // not yet used
-    fact_number: u32,
-}
-
-#[derive(Clone)]
-struct ConclusionSelected {
-    fact: String,
-}
-
-#[derive(Clone)]
-struct IterationSummary {
-    hypothesis_selected_fact: Option<String>,
-    conclusion_selected_fact: Option<String>,
+    fact_number: Option<u32>,
 }
 
 impl Display for SaturationProgress {
@@ -56,29 +55,36 @@ impl Display for SaturationProgress {
 }
 
 impl SaturationState {
-    pub fn new(cli: &Cli) -> Self {
-        let all = cli.all || cli.print_all;
-
+    pub fn new() -> Self {
         SaturationState {
-            saturation_progress: None,
-            hypothesis_selected: None,
-            conclusion_selected: None,
+            progress: None,
+            query: None,
+            conclusion_fact_selected: None,
+            hypothesis_fact_selected: None,
 
-            last_iteration_summary: None,
+            queue_entries: Vec::new(),
+
+            iterations: Vec::new(),
             hypothesis_selected_fact_history: Vec::new(),
-
-            print_saturation_progress: all || cli.print_saturation_progress,
-            print_hypothesis_selected_fact: all || cli.print_hypothesis_selected_fact,
-            print_conclusion_selected_fact: all || cli.print_conclusion_selected_fact,
         }
     }
 
-    pub fn set_hypothesis_selected(&mut self, fact: String, fact_number: u32) {
-        self.hypothesis_selected = Some(HypothesisSelected { fact, fact_number });
+    pub fn set_query(&mut self, query: String) {
+        self.query = Some(query);
     }
 
-    pub fn set_conclusion_selected(&mut self, fact: String) {
-        self.conclusion_selected = Some(ConclusionSelected { fact });
+    pub fn set_hypothesis_fact_selected(&mut self, fact: String, fact_number: u32) {
+        self.hypothesis_fact_selected = Some(SelectedFact {
+            fact,
+            fact_number: Some(fact_number),
+        });
+    }
+
+    pub fn set_conclusion_fact_selected(&mut self, fact: String) {
+        self.conclusion_fact_selected = Some(SelectedFact {
+            fact,
+            fact_number: None,
+        });
     }
 
     pub fn set_saturation_progress(
@@ -88,7 +94,7 @@ impl SaturationState {
         with_hypothesis_selected: u32,
         in_queue: u32,
     ) {
-        self.saturation_progress = Some(SaturationProgress {
+        self.progress = Some(SaturationProgress {
             iteration,
             with_conclusion_selected,
             with_hypothesis_selected,
@@ -96,82 +102,80 @@ impl SaturationState {
         });
     }
 
-    pub fn flush_iteration(&mut self, printer: &mut Printer) {
-        if let Some(hypothesis_selected) = self.hypothesis_selected.clone() {
-            self.flush_hypothesis_iteration(&hypothesis_selected, printer);
-        } else if let Some(conclusion_selected) = self.conclusion_selected.clone() {
-            self.flush_conclusion_iteration(&conclusion_selected, printer);
+    pub fn complete_iteration(&mut self, printer: &Printer) {
+        if let (Some(progress), Some(query)) = (self.progress, self.query.clone()) {
+            let iteration = Iteration {
+                progress,
+                query,
+                hypothesis_fact_selected: self.hypothesis_fact_selected.clone(),
+                conclusion_fact_selected: self.conclusion_fact_selected.clone(),
+                added_to_queue: Vec::new(),
+            };
+
+            self.iterations.push(iteration)
+
+            // todo: check whether to extend hypothesis_selected_fact_history
+        } else {
+            printer.print_internal_error("Cannot create iteration")
         }
 
-        self.hypothesis_selected = None;
-        self.conclusion_selected = None;
-        self.saturation_progress = None;
+        self.progress = None;
+        self.query = None;
+        self.hypothesis_fact_selected = None;
+        self.conclusion_fact_selected = None;
+        self.queue_entries = Vec::new()
     }
 
-    fn flush_hypothesis_iteration(
-        &mut self,
-        hypothesis_selected: &HypothesisSelected,
-        printer: &mut Printer,
-    ) {
+    pub fn create_last_iteration_printer(&mut self) -> Option<IterationSummary> {
+        if let Some(last_iteration) = self.iterations.last() {
+            let previous_iteration = self.iterations.get(self.iterations.len() - 2);
+
+            let title = Self::print_selected_fact(&last_iteration, &previous_iteration);
+            let summary = IterationSummary::new(title, format!("{}", last_iteration.progress));
+
+            Some(summary)
+        } else {
+            None
+        }
+    }
+
+    fn print_selected_fact(
+        iteration: &Iteration,
+        previous_iteration: &Option<&Iteration>,
+    ) -> String {
+        let mut fact_source: &str = "";
+        let mut fact: String = String::new();
         let mut same_as_before = false;
-        if let Some(last_iteration_summary) = self.last_iteration_summary.clone() {
-            // if different fact, fill history
-            if let Some(hypothesis_selected_fact) = last_iteration_summary.hypothesis_selected_fact {
-                same_as_before = hypothesis_selected_fact == hypothesis_selected.fact
+
+        if let Some(selected_fact) = iteration.hypothesis_fact_selected.clone() {
+            fact_source = "hypothesis";
+            fact = selected_fact.fact.clone();
+
+            if let Some(previous_iteration) = previous_iteration {
+                if let Some(previous_selected_fact) =
+                    previous_iteration.hypothesis_fact_selected.clone()
+                {
+                    same_as_before = previous_selected_fact.fact == selected_fact.fact
+                }
+            }
+        } else if let Some(selected_fact) = iteration.conclusion_fact_selected.clone() {
+            fact_source = "conclusion";
+            fact = selected_fact.fact.clone();
+
+            if let Some(previous_iteration) = previous_iteration {
+                if let Some(previous_selected_fact) =
+                    previous_iteration.conclusion_fact_selected.clone()
+                {
+                    same_as_before = previous_selected_fact.fact == selected_fact.fact
+                }
             }
         }
 
-        self.print_iteration(printer, "hypothesis", self.print_hypothesis_selected_fact, &hypothesis_selected.fact, same_as_before);
-
-        self.last_iteration_summary = Some(IterationSummary {
-            hypothesis_selected_fact: Some(hypothesis_selected.fact.clone()),
-            conclusion_selected_fact: None,
-        });
-    }
-
-    fn flush_conclusion_iteration(
-        &mut self,
-        conclusion_selected: &ConclusionSelected,
-        printer: &mut Printer,
-    ) {
-        let mut same_as_before = false;
-        if let Some(last_iteration_summary) = self.last_iteration_summary.clone() {
-            // if different fact, fill history
-            if let Some(conclusion_selected_fact) = last_iteration_summary.conclusion_selected_fact {
-                same_as_before = conclusion_selected_fact == conclusion_selected.fact
-            }
+        let mut line = format!("{} fact selected: {}", fact_source, fact);
+        if same_as_before {
+            line = format!("{line} (again)");
         }
 
-        self.print_iteration(printer, "conclusion", self.print_conclusion_selected_fact, &conclusion_selected.fact, same_as_before);
-
-        self.last_iteration_summary = Some(IterationSummary {
-            hypothesis_selected_fact: Some(conclusion_selected.fact.clone()),
-            conclusion_selected_fact: None,
-        });
-    }
-
-
-    fn print_iteration(
-        &self,
-        printer: &mut Printer,
-        location: &str,
-        print_location: bool,
-        fact: &String,
-        same_as_before: bool
-    ) {
-        let mut line = String::new();
-        if print_location {
-            line = format!("Selected in {}: {}", location, fact);
-            if same_as_before {
-                line = format!("{line} (again)");
-            }
-        }
-        if self.print_saturation_progress && self.saturation_progress.is_some() {
-            line = format!("{0}\t{line}", self.saturation_progress.unwrap());
-        }
-
-        if print_location || self.print_saturation_progress {
-            printer.print(line.to_string());
-        }
+        line
     }
 }
