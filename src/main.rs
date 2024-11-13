@@ -30,6 +30,9 @@ struct Cli {
     print_query: bool,
     #[arg(long)]
     print_new_queue_entries: bool,
+
+    #[arg(long)]
+    explain_rule: Option<u32>,
 }
 
 fn main() {
@@ -146,17 +149,21 @@ enum RuleContext {
 }
 
 fn flush_iteration(cli: &Cli, saturation_state: &mut SaturationState, fact_checker: &FactChecker, cycle_detector: &mut CycleDetector, printer: &Printer) {
-    saturation_state.complete_iteration(printer);
-    if let Some(mut iteration_summary) = saturation_state.create_last_iteration_printer() {
-        if cli.detect_all || cli.detect_cycles {
-            cycle_detector.check_cycles(&saturation_state.hypothesis_selected_fact_history, &mut iteration_summary);
-        }
-
-        if let Some(history) = saturation_state.hypothesis_selected_fact_history.last() {
-            fact_checker.check(&history.0, &mut iteration_summary)
-        }
-
-        // print
-        iteration_summary.print(cli, printer)
+    let iteration_summary = saturation_state.complete_iteration();
+    if iteration_summary.is_none() {
+        return;
     }
+
+    let mut iteration_summary = iteration_summary.unwrap();
+
+    if cli.detect_all || cli.detect_cycles {
+        cycle_detector.check_cycles(&saturation_state.hypothesis_selected_fact_history, &mut iteration_summary);
+    }
+
+    if let Some(history) = saturation_state.hypothesis_selected_fact_history.last() {
+        fact_checker.check(&history.0, &mut iteration_summary)
+    }
+
+    // print
+    iteration_summary.print(cli, printer)
 }

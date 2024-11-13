@@ -1,5 +1,5 @@
 use crate::iteration_summary::IterationSummary;
-use crate::printer::Printer;
+use std::cmp::PartialEq;
 use std::fmt::{Display, Formatter};
 
 pub struct SaturationState {
@@ -16,12 +16,10 @@ pub struct SaturationState {
 
 struct Iteration {
     progress: SaturationProgress,
-    #[allow(dead_code)] // not yet used
     query: String,
     hypothesis_fact_selected: Option<SelectedFact>,
     conclusion_fact_selected: Option<SelectedFact>,
 
-    #[allow(dead_code)] // not yet used
     new_queue_entries: Vec<String>,
 }
 
@@ -33,7 +31,7 @@ struct SaturationProgress {
     in_queue: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 struct SelectedFact {
     fact: String,
 
@@ -94,41 +92,44 @@ impl SaturationState {
         });
     }
 
-    pub fn complete_iteration(&mut self, printer: &Printer) {
-        if let (Some(progress), Some(query)) = (self.progress, self.query.clone()) {
-            let iteration = Iteration {
-                progress,
-                query,
-                hypothesis_fact_selected: self.hypothesis_fact_selected.clone(),
-                conclusion_fact_selected: self.conclusion_fact_selected.clone(),
-                new_queue_entries: self.new_queue_entries.clone(),
-            };
-
-            self.iterations.push(iteration)
-
-            // todo: check whether to extend hypothesis_selected_fact_history
-        } else {
-            printer.print_internal_error("Cannot create iteration")
+    pub fn complete_iteration(&mut self) -> Option<IterationSummary> {
+        if self.progress.is_none() || self.query.is_none() {
+            return None;
         }
+
+        let progress = self.progress.unwrap();
+        let query = self.query.clone().unwrap();
+
+        let iteration = Iteration {
+            progress,
+            query,
+            hypothesis_fact_selected: self.hypothesis_fact_selected.clone(),
+            conclusion_fact_selected: self.conclusion_fact_selected.clone(),
+            new_queue_entries: self.new_queue_entries.clone(),
+        };
+
+        // keep aggregated history of selected hypothesis (useful to detect loops)
+        if let Some(previous_iteration) = self.iterations.last() {
+            if previous_iteration.hypothesis_fact_selected.is_some() && previous_iteration.hypothesis_fact_selected == iteration.hypothesis_fact_selected {
+                let last_index = self.hypothesis_selected_fact_history.len() - 1;
+                let (fact, count) = self.hypothesis_selected_fact_history[last_index].clone();
+                self.hypothesis_selected_fact_history[last_index] = (fact.clone(), count + 1);
+            } else if let Some(hypothesis_fact_selected) = iteration.hypothesis_fact_selected.clone() {
+                self.hypothesis_selected_fact_history.push((hypothesis_fact_selected.fact, 1))
+            }
+        }
+
+        let selected_fact = Self::print_selected_fact(&iteration, &self.iterations.last());
+        let summary = IterationSummary::new(selected_fact, iteration.query.clone(), iteration.new_queue_entries.clone(), format!("{}", iteration.progress));
 
         self.progress = None;
         self.query = None;
         self.hypothesis_fact_selected = None;
         self.conclusion_fact_selected = None;
-        self.new_queue_entries = Vec::new()
-    }
+        self.new_queue_entries = Vec::new();
+        self.iterations.push(iteration);
 
-    pub fn create_last_iteration_printer(&mut self) -> Option<IterationSummary> {
-        if let Some(last_iteration) = self.iterations.last() {
-            let previous_iteration = self.iterations.get(self.iterations.len() - 2);
-
-            let selected_fact = Self::print_selected_fact(last_iteration, &previous_iteration);
-            let summary = IterationSummary::new(selected_fact, last_iteration.query.clone(), last_iteration.new_queue_entries.clone(), format!("{}", last_iteration.progress));
-
-            Some(summary)
-        } else {
-            None
-        }
+        Some(summary)
     }
 
     fn print_selected_fact(iteration: &Iteration, previous_iteration: &Option<&Iteration>) -> String {

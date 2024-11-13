@@ -19,7 +19,4 @@ impl Printer {
     pub fn print_error(&self, header: &String, line: &String) {
         self.print(&format!("\x1b[91m{}\x1b[0m: {}", header, line));
     }
-    pub fn print_internal_error(&self, line: &str) {
-        self.print(&format!("\x1b[91mBug\x1b[0m: {}", line));
-    }
 }
