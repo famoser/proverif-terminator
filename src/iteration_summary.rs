@@ -76,7 +76,7 @@ impl IterationSummary {
         if let Some(ancestry) = self.ancestry.clone() {
             description.push("Ancestors:".to_string());
             for ancestor in ancestry.iter().rev() {
-                let iteration_description = Self::describe_selected_iteration(&ancestor);
+                let iteration_description = Self::describe_selected_iteration(ancestor);
                 description.push(format!("- {}", iteration_description));
             }
         }

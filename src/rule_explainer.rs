@@ -7,7 +7,7 @@ impl QueryExplainer {
         QueryExplainer {}
     }
 
-    pub fn get_ancestry(&self, iterations: &Vec<Iteration>) -> Vec<Iteration> {
+    pub fn get_ancestry(&self, iterations: &[Iteration]) -> Vec<Iteration> {
         let mut ancestry: Vec<Iteration> = Vec::new();
 
         let mut skip_queue_entries = 0;
@@ -15,7 +15,7 @@ impl QueryExplainer {
         for iteration in iterations.iter().rev() {
             let new_queue_entries = iteration.new_queue_entries.len();
 
-            if skip_queue_entries < new_queue_entries || ancestry.len() == 0 {
+            if skip_queue_entries < new_queue_entries || ancestry.is_empty() {
                 ancestry.push(iteration.clone());
                 skip_queue_entries = iteration.progress.in_queue;
             }
