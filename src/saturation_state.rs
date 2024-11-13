@@ -8,7 +8,7 @@ pub struct SaturationState {
     hypothesis_fact_selected: Option<SelectedFact>,
     conclusion_fact_selected: Option<SelectedFact>,
 
-    queue_entries: Vec<String>,
+    new_queue_entries: Vec<String>,
 
     iterations: Vec<Iteration>,
     pub hypothesis_selected_fact_history: Vec<(String, u32)>,
@@ -22,7 +22,7 @@ struct Iteration {
     conclusion_fact_selected: Option<SelectedFact>,
 
     #[allow(dead_code)] // not yet used
-    added_to_queue: Vec<String>,
+    new_queue_entries: Vec<String>,
 }
 
 #[derive(Copy, Clone)]
@@ -55,7 +55,7 @@ impl SaturationState {
             conclusion_fact_selected: None,
             hypothesis_fact_selected: None,
 
-            queue_entries: Vec::new(),
+            new_queue_entries: Vec::new(),
 
             iterations: Vec::new(),
             hypothesis_selected_fact_history: Vec::new(),
@@ -64,6 +64,17 @@ impl SaturationState {
 
     pub fn set_query(&mut self, query: String) {
         self.query = Some(query);
+    }
+
+    pub fn set_queue_entry(&mut self, entry_number: u32, rule: String) {
+        // ignore queue entries already existing in previous queue
+        if let Some(last_iteration) = self.iterations.last() {
+            if entry_number < last_iteration.progress.in_queue {
+                return;
+            }
+        }
+
+        self.new_queue_entries.push(rule);
     }
 
     pub fn set_hypothesis_fact_selected(&mut self, fact: String, fact_number: u32) {
@@ -90,7 +101,7 @@ impl SaturationState {
                 query,
                 hypothesis_fact_selected: self.hypothesis_fact_selected.clone(),
                 conclusion_fact_selected: self.conclusion_fact_selected.clone(),
-                added_to_queue: Vec::new(),
+                new_queue_entries: self.new_queue_entries.clone(),
             };
 
             self.iterations.push(iteration)
@@ -104,15 +115,15 @@ impl SaturationState {
         self.query = None;
         self.hypothesis_fact_selected = None;
         self.conclusion_fact_selected = None;
-        self.queue_entries = Vec::new()
+        self.new_queue_entries = Vec::new()
     }
 
     pub fn create_last_iteration_printer(&mut self) -> Option<IterationSummary> {
         if let Some(last_iteration) = self.iterations.last() {
             let previous_iteration = self.iterations.get(self.iterations.len() - 2);
 
-            let title = Self::print_selected_fact(last_iteration, &previous_iteration);
-            let summary = IterationSummary::new(title, format!("{}", last_iteration.progress));
+            let selected_fact = Self::print_selected_fact(last_iteration, &previous_iteration);
+            let summary = IterationSummary::new(selected_fact, last_iteration.query.clone(), last_iteration.new_queue_entries.clone(), format!("{}", last_iteration.progress));
 
             Some(summary)
         } else {
@@ -145,7 +156,7 @@ impl SaturationState {
             }
         }
 
-        let mut line = format!("{} fact selected: {}", fact_source, fact);
+        let mut line = format!("{} {}", fact_source, fact);
         if same_as_before {
             line = format!("{line} (again)");
         }

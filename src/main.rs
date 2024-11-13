@@ -9,7 +9,7 @@ use crate::fact_checker::FactChecker;
 use crate::printer::Printer;
 use crate::saturation_state::SaturationState;
 use clap::Parser;
-use regex::{Captures, Regex};
+use regex::Regex;
 use std::io::{self};
 
 #[derive(Parser)]
@@ -23,6 +23,13 @@ struct Cli {
     detect_high_counters: bool,
     #[arg(long)]
     detect_cycles: bool,
+
+    #[arg(short, long)]
+    print_all: bool,
+    #[arg(long)]
+    print_query: bool,
+    #[arg(long)]
+    print_new_queue_entries: bool,
 }
 
 fn main() {
@@ -33,26 +40,69 @@ fn main() {
     let fact_checker = FactChecker::new(&cli);
     let mut cycle_detector = CycleDetector::new();
 
-    let mut printer = Printer::new();
+    let printer = Printer::new();
 
     let stdin = io::stdin();
     let hypothesis_match = Regex::new(r"Rule with hypothesis fact (?<fact_number>[0-9]+) selected: (?<fact>.+)").unwrap();
     let conclusion_match = Regex::new(r"Rule with conclusion selected:").unwrap();
     let conclusion_fact_match = Regex::new(r".+ -> (?<fact>.+)").unwrap();
-    let queue_match = Regex::new(r"(?<rules_inserted_count>\d+) rules inserted\. Base: (?<rules_base_count>\d+) rules \((?<rules_conclusion_selected_count>\d+) with conclusion selected\)\. Queue: (?<rules_queue_count>\d+) rules\.").unwrap();
+    let progress_match = Regex::new(r"(?<rules_inserted_count>\d+) rules inserted\. Base: (?<rules_base_count>\d+) rules \((?<rules_conclusion_selected_count>\d+) with conclusion selected\)\. Queue: (?<rules_queue_count>\d+) rules\.").unwrap();
+
+    let conclusion_start_match = Regex::new(r"\*\*\* Rules with the conclusion selected").unwrap();
+    let hypothesis_start_match = Regex::new(r"\*\*\* Rules with an hypothesis selected").unwrap();
+    let queue_start_match = Regex::new(r"\*\*\* Rules in queue").unwrap();
+    let rule_match = Regex::new(r"(?<rule_number>[0-9]+) -- (?<rule>.+)").unwrap();
+    let mut rule_context = RuleContext::Unknown;
 
     loop {
         let mut line = String::new();
         stdin.read_line(&mut line).unwrap();
 
-        let queue_capture = queue_match.captures(&line);
-        if let Some(queue_capture) = queue_capture {
-            process_queue_status(&queue_capture, &mut saturation_state);
+        if let Some(rule_capture) = rule_match.captures(&line) {
+            match rule_context {
+                RuleContext::Queue => {}
+                _ => {
+                    continue;
+                }
+            }
+
+            let rule = rule_capture.name("rule").unwrap().as_str();
+            let rule_number = rule_capture.name("rule_number").unwrap().as_str();
+            let rule_number = rule_number.parse::<u32>().unwrap_or(0);
+
+            saturation_state.set_queue_entry(rule_number, rule.to_string());
+
             continue;
         }
 
-        let hypothesis_capture = hypothesis_match.captures(&line);
-        if let Some(hypothesis_capture) = hypothesis_capture {
+        if conclusion_start_match.captures(&line).is_some() {
+            rule_context = RuleContext::Conclusion;
+        }
+
+        if hypothesis_start_match.captures(&line).is_some() {
+            rule_context = RuleContext::Hypothesis;
+        }
+
+        if queue_start_match.captures(&line).is_some() {
+            rule_context = RuleContext::Queue;
+        }
+
+        if let Some(progress_capture) = progress_match.captures(&line) {
+            let rules_inserted_count = progress_capture.name("rules_inserted_count").unwrap().as_str();
+            let rules_base_count = progress_capture.name("rules_base_count").unwrap().as_str();
+            let rules_conclusion_selected_count: &str = progress_capture.name("rules_conclusion_selected_count").unwrap().as_str();
+            let rules_queue_count: &str = progress_capture.name("rules_queue_count").unwrap().as_str();
+
+            let iteration = rules_inserted_count.parse::<u32>().unwrap_or(0);
+            let in_queue = rules_queue_count.parse::<u32>().unwrap_or(0);
+            let with_conclusion_selected = rules_conclusion_selected_count.parse::<u32>().unwrap_or(0);
+            let with_hypothesis_selected = rules_base_count.parse::<u32>().unwrap_or(0) - with_conclusion_selected;
+            saturation_state.set_saturation_progress(iteration, with_conclusion_selected, with_hypothesis_selected, in_queue);
+            continue;
+        }
+
+        if let Some(hypothesis_capture) = hypothesis_match.captures(&line) {
+            rule_context = RuleContext::Queue;
             flush_iteration(&cli, &mut saturation_state, &fact_checker, &mut cycle_detector, &printer);
 
             let mut query = String::new();
@@ -67,8 +117,8 @@ fn main() {
             continue;
         }
 
-        let conclusion_capture = conclusion_match.captures(&line);
-        if conclusion_capture.is_some() {
+        if conclusion_match.captures(&line).is_some() {
+            rule_context = RuleContext::Queue;
             flush_iteration(&cli, &mut saturation_state, &fact_checker, &mut cycle_detector, &printer);
 
             let mut query = String::new();
@@ -88,31 +138,25 @@ fn main() {
     }
 }
 
+enum RuleContext {
+    Unknown,
+    Conclusion,
+    Hypothesis,
+    Queue,
+}
+
 fn flush_iteration(cli: &Cli, saturation_state: &mut SaturationState, fact_checker: &FactChecker, cycle_detector: &mut CycleDetector, printer: &Printer) {
     saturation_state.complete_iteration(printer);
-    if let Some(mut iteration_printer) = saturation_state.create_last_iteration_printer() {
+    if let Some(mut iteration_summary) = saturation_state.create_last_iteration_printer() {
         if cli.detect_all || cli.detect_cycles {
-            cycle_detector.check_cycles(&saturation_state.hypothesis_selected_fact_history, &mut iteration_printer);
+            cycle_detector.check_cycles(&saturation_state.hypothesis_selected_fact_history, &mut iteration_summary);
         }
 
         if let Some(history) = saturation_state.hypothesis_selected_fact_history.last() {
-            fact_checker.check(&history.0, &mut iteration_printer)
+            fact_checker.check(&history.0, &mut iteration_summary)
         }
 
         // print
-        iteration_printer.print(printer)
+        iteration_summary.print(cli, printer)
     }
-}
-
-fn process_queue_status(captures: &Captures, saturation_state: &mut SaturationState) {
-    let rules_inserted_count = captures.name("rules_inserted_count").unwrap().as_str();
-    let rules_base_count = captures.name("rules_base_count").unwrap().as_str();
-    let rules_conclusion_selected_count: &str = captures.name("rules_conclusion_selected_count").unwrap().as_str();
-    let rules_queue_count: &str = captures.name("rules_queue_count").unwrap().as_str();
-
-    let iteration = rules_inserted_count.parse::<u32>().unwrap_or(0);
-    let in_queue = rules_queue_count.parse::<u32>().unwrap_or(0);
-    let with_conclusion_selected = rules_conclusion_selected_count.parse::<u32>().unwrap_or(0);
-    let with_hypothesis_selected = rules_base_count.parse::<u32>().unwrap_or(0) - with_conclusion_selected;
-    saturation_state.set_saturation_progress(iteration, with_conclusion_selected, with_hypothesis_selected, in_queue);
 }
