@@ -10,33 +10,34 @@ pub struct SaturationState {
 
     new_queue_entries: Vec<String>,
 
-    iterations: Vec<Iteration>,
+    pub iterations: Vec<Iteration>,
     pub hypothesis_selected_fact_history: Vec<(String, u32)>,
 }
 
-struct Iteration {
-    progress: SaturationProgress,
-    query: String,
-    hypothesis_fact_selected: Option<SelectedFact>,
-    conclusion_fact_selected: Option<SelectedFact>,
+#[derive(Clone)]
+pub struct Iteration {
+    pub progress: SaturationProgress,
+    pub query: String,
+    pub hypothesis_fact_selected: Option<SelectedFact>,
+    pub conclusion_fact_selected: Option<SelectedFact>,
 
-    new_queue_entries: Vec<String>,
+    pub new_queue_entries: Vec<String>,
 }
 
 #[derive(Copy, Clone)]
-struct SaturationProgress {
-    iteration: u32,
-    with_conclusion_selected: u32,
-    with_hypothesis_selected: u32,
-    in_queue: u32,
+pub struct SaturationProgress {
+    pub iteration: usize,
+    pub with_conclusion_selected: usize,
+    pub with_hypothesis_selected: usize,
+    pub in_queue: usize,
 }
 
 #[derive(Clone, PartialEq, Eq)]
-struct SelectedFact {
-    fact: String,
+pub struct SelectedFact {
+    pub fact: String,
 
     #[allow(dead_code)] // not yet used
-    fact_number: Option<u32>,
+    pub fact_number: Option<usize>,
 }
 
 impl Display for SaturationProgress {
@@ -64,7 +65,7 @@ impl SaturationState {
         self.query = Some(query);
     }
 
-    pub fn set_queue_entry(&mut self, entry_number: u32, rule: String) {
+    pub fn set_queue_entry(&mut self, entry_number: usize, rule: String) {
         // ignore queue entries already existing in previous queue
         if let Some(last_iteration) = self.iterations.last() {
             if entry_number < last_iteration.progress.in_queue {
@@ -75,7 +76,7 @@ impl SaturationState {
         self.new_queue_entries.push(rule);
     }
 
-    pub fn set_hypothesis_fact_selected(&mut self, fact: String, fact_number: u32) {
+    pub fn set_hypothesis_fact_selected(&mut self, fact: String, fact_number: usize) {
         self.hypothesis_fact_selected = Some(SelectedFact { fact, fact_number: Some(fact_number) });
     }
 
@@ -83,7 +84,7 @@ impl SaturationState {
         self.conclusion_fact_selected = Some(SelectedFact { fact, fact_number: None });
     }
 
-    pub fn set_saturation_progress(&mut self, iteration: u32, with_conclusion_selected: u32, with_hypothesis_selected: u32, in_queue: u32) {
+    pub fn set_saturation_progress(&mut self, iteration: usize, with_conclusion_selected: usize, with_hypothesis_selected: usize, in_queue: usize) {
         self.progress = Some(SaturationProgress {
             iteration,
             with_conclusion_selected,

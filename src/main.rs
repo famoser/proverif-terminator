@@ -2,11 +2,13 @@ mod cycles;
 mod fact_checker;
 mod iteration_summary;
 mod printer;
+mod rule_explainer;
 mod saturation_state;
 
 use crate::cycles::CycleDetector;
 use crate::fact_checker::FactChecker;
 use crate::printer::Printer;
+use crate::rule_explainer::QueryExplainer;
 use crate::saturation_state::SaturationState;
 use clap::Parser;
 use regex::Regex;
@@ -32,7 +34,7 @@ struct Cli {
     print_new_queue_entries: bool,
 
     #[arg(long)]
-    explain_rule: Option<u32>,
+    explain_query: Option<usize>,
 }
 
 fn main() {
@@ -46,6 +48,7 @@ fn main() {
     let printer = Printer::new();
 
     let stdin = io::stdin();
+
     let hypothesis_match = Regex::new(r"Rule with hypothesis fact (?<fact_number>[0-9]+) selected: (?<fact>.+)").unwrap();
     let conclusion_match = Regex::new(r"Rule with conclusion selected:").unwrap();
     let conclusion_fact_match = Regex::new(r".+ -> (?<fact>.+)").unwrap();
@@ -71,7 +74,7 @@ fn main() {
 
             let rule = rule_capture.name("rule").unwrap().as_str();
             let rule_number = rule_capture.name("rule_number").unwrap().as_str();
-            let rule_number = rule_number.parse::<u32>().unwrap_or(0);
+            let rule_number = rule_number.parse::<usize>().unwrap_or(0);
 
             saturation_state.set_queue_entry(rule_number, rule.to_string());
 
@@ -96,10 +99,10 @@ fn main() {
             let rules_conclusion_selected_count: &str = progress_capture.name("rules_conclusion_selected_count").unwrap().as_str();
             let rules_queue_count: &str = progress_capture.name("rules_queue_count").unwrap().as_str();
 
-            let iteration = rules_inserted_count.parse::<u32>().unwrap_or(0);
-            let in_queue = rules_queue_count.parse::<u32>().unwrap_or(0);
-            let with_conclusion_selected = rules_conclusion_selected_count.parse::<u32>().unwrap_or(0);
-            let with_hypothesis_selected = rules_base_count.parse::<u32>().unwrap_or(0) - with_conclusion_selected;
+            let iteration = rules_inserted_count.parse::<usize>().unwrap_or(0);
+            let in_queue = rules_queue_count.parse::<usize>().unwrap_or(0);
+            let with_conclusion_selected = rules_conclusion_selected_count.parse::<usize>().unwrap_or(0);
+            let with_hypothesis_selected = rules_base_count.parse::<usize>().unwrap_or(0) - with_conclusion_selected;
             saturation_state.set_saturation_progress(iteration, with_conclusion_selected, with_hypothesis_selected, in_queue);
             continue;
         }
@@ -115,7 +118,7 @@ fn main() {
             let fact = hypothesis_capture.name("fact").unwrap().as_str();
             let fact_number = hypothesis_capture.name("fact_number").unwrap().as_str();
 
-            let fact_number = fact_number.parse::<u32>().unwrap_or(0);
+            let fact_number = fact_number.parse::<usize>().unwrap_or(0);
             saturation_state.set_hypothesis_fact_selected(fact.to_string(), fact_number);
             continue;
         }
@@ -162,6 +165,15 @@ fn flush_iteration(cli: &Cli, saturation_state: &mut SaturationState, fact_check
 
     if let Some(history) = saturation_state.hypothesis_selected_fact_history.last() {
         fact_checker.check(&history.0, &mut iteration_summary)
+    }
+
+    if let Some(explain_query) = cli.explain_query {
+        if saturation_state.iterations.len() == explain_query {
+            let explainer = QueryExplainer::new();
+            let ancestry = explainer.get_ancestry(&saturation_state.iterations);
+            iteration_summary.add_ancestry(ancestry);
+        }
+        cycle_detector.check_cycles(&saturation_state.hypothesis_selected_fact_history, &mut iteration_summary);
     }
 
     // print
