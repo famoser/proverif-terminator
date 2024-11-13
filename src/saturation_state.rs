@@ -43,14 +43,7 @@ struct SelectedFact {
 
 impl Display for SaturationProgress {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} ({}c, {}h, {}q)",
-            self.iteration,
-            self.with_conclusion_selected,
-            self.with_hypothesis_selected,
-            self.in_queue,
-        )
+        write!(f, "{} ({}c, {}h, {}q)", self.iteration, self.with_conclusion_selected, self.with_hypothesis_selected, self.in_queue,)
     }
 }
 
@@ -74,26 +67,14 @@ impl SaturationState {
     }
 
     pub fn set_hypothesis_fact_selected(&mut self, fact: String, fact_number: u32) {
-        self.hypothesis_fact_selected = Some(SelectedFact {
-            fact,
-            fact_number: Some(fact_number),
-        });
+        self.hypothesis_fact_selected = Some(SelectedFact { fact, fact_number: Some(fact_number) });
     }
 
     pub fn set_conclusion_fact_selected(&mut self, fact: String) {
-        self.conclusion_fact_selected = Some(SelectedFact {
-            fact,
-            fact_number: None,
-        });
+        self.conclusion_fact_selected = Some(SelectedFact { fact, fact_number: None });
     }
 
-    pub fn set_saturation_progress(
-        &mut self,
-        iteration: u32,
-        with_conclusion_selected: u32,
-        with_hypothesis_selected: u32,
-        in_queue: u32,
-    ) {
+    pub fn set_saturation_progress(&mut self, iteration: u32, with_conclusion_selected: u32, with_hypothesis_selected: u32, in_queue: u32) {
         self.progress = Some(SaturationProgress {
             iteration,
             with_conclusion_selected,
@@ -130,7 +111,7 @@ impl SaturationState {
         if let Some(last_iteration) = self.iterations.last() {
             let previous_iteration = self.iterations.get(self.iterations.len() - 2);
 
-            let title = Self::print_selected_fact(&last_iteration, &previous_iteration);
+            let title = Self::print_selected_fact(last_iteration, &previous_iteration);
             let summary = IterationSummary::new(title, format!("{}", last_iteration.progress));
 
             Some(summary)
@@ -139,10 +120,7 @@ impl SaturationState {
         }
     }
 
-    fn print_selected_fact(
-        iteration: &Iteration,
-        previous_iteration: &Option<&Iteration>,
-    ) -> String {
+    fn print_selected_fact(iteration: &Iteration, previous_iteration: &Option<&Iteration>) -> String {
         let mut fact_source: &str = "";
         let mut fact: String = String::new();
         let mut same_as_before = false;
@@ -152,9 +130,7 @@ impl SaturationState {
             fact = selected_fact.fact.clone();
 
             if let Some(previous_iteration) = previous_iteration {
-                if let Some(previous_selected_fact) =
-                    previous_iteration.hypothesis_fact_selected.clone()
-                {
+                if let Some(previous_selected_fact) = previous_iteration.hypothesis_fact_selected.clone() {
                     same_as_before = previous_selected_fact.fact == selected_fact.fact
                 }
             }
@@ -163,9 +139,7 @@ impl SaturationState {
             fact = selected_fact.fact.clone();
 
             if let Some(previous_iteration) = previous_iteration {
-                if let Some(previous_selected_fact) =
-                    previous_iteration.conclusion_fact_selected.clone()
-                {
+                if let Some(previous_selected_fact) = previous_iteration.conclusion_fact_selected.clone() {
                     same_as_before = previous_selected_fact.fact == selected_fact.fact
                 }
             }

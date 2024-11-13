@@ -66,10 +66,7 @@ fn find_cycles(history: &[(String, u32)]) -> Option<Cycle> {
     if let Some(smallest_cycle_size) = smallest_cycle_size {
         let number_of_cycles = find_number_of_cycles(history, smallest_cycle_size);
 
-        return Some(Cycle {
-            size: smallest_cycle_size,
-            repeat: number_of_cycles,
-        });
+        return Some(Cycle { size: smallest_cycle_size, repeat: number_of_cycles });
     }
 
     None
@@ -145,56 +142,27 @@ fn find_number_of_cycles(history: &[(String, u32)], cycle_size: usize) -> usize 
 
 #[test]
 fn test_cycles_no_cycle() {
-    let history = vec![
-        ("a".to_string(), 1),
-        ("a".to_string(), 2),
-        ("b".to_string(), 1),
-    ];
+    let history = vec![("a".to_string(), 1), ("a".to_string(), 2), ("b".to_string(), 1)];
     assert_eq!(find_cycles(&history), None);
 
-    let history = vec![
-        ("a".to_string(), 1),
-        ("b".to_string(), 1),
-        ("a".to_string(), 1),
-    ];
+    let history = vec![("a".to_string(), 1), ("b".to_string(), 1), ("a".to_string(), 1)];
     assert_eq!(find_cycles(&history), None);
 
-    let history = vec![
-        ("a".to_string(), 1),
-        ("b".to_string(), 2),
-        ("a".to_string(), 1),
-    ];
+    let history = vec![("a".to_string(), 1), ("b".to_string(), 2), ("a".to_string(), 1)];
     assert_eq!(find_cycles(&history), None);
 }
 
 #[test]
 fn test_cycles_one_cycle() {
-    let history = vec![
-        ("b".to_string(), 2),
-        ("a".to_string(), 1),
-        ("a".to_string(), 1),
-    ];
+    let history = vec![("b".to_string(), 2), ("a".to_string(), 1), ("a".to_string(), 1)];
     assert_eq!(find_cycles(&history), Some(Cycle { size: 1, repeat: 2 }));
 
-    let history = vec![
-        ("a".to_string(), 1),
-        ("a".to_string(), 2),
-        ("a".to_string(), 1),
-        ("a".to_string(), 2),
-        ("a".to_string(), 1),
-    ];
+    let history = vec![("a".to_string(), 1), ("a".to_string(), 2), ("a".to_string(), 1), ("a".to_string(), 2), ("a".to_string(), 1)];
     assert_eq!(find_cycles(&history), Some(Cycle { size: 2, repeat: 2 }));
 }
 
 #[test]
 fn test_find_number_of_cycles_multiple_cycles() {
-    let history = vec![
-        ("a".to_string(), 1),
-        ("a".to_string(), 2),
-        ("a".to_string(), 1),
-        ("a".to_string(), 2),
-        ("a".to_string(), 1),
-        ("a".to_string(), 2),
-    ];
+    let history = vec![("a".to_string(), 1), ("a".to_string(), 2), ("a".to_string(), 1), ("a".to_string(), 2), ("a".to_string(), 1), ("a".to_string(), 2)];
     assert_eq!(find_cycles(&history), Some(Cycle { size: 2, repeat: 3 }));
 }

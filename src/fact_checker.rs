@@ -39,8 +39,8 @@ fn compose_targets(cli: &Cli) -> HashMap<&'static str, Vec<&'static str>> {
         templates_map.insert(
             "HighCounter",
             vec![
-                r"mess2\(.+,[0-9]{2,},.+\)", // detect 2-digit number in first channel
-                r"mess2\(.+,[0-9]{2,}\)",    // detect 2-digit number in second channel
+                r"mess2\(.+,[0-9]{2,},.+\)",          // detect 2-digit number in first channel
+                r"mess2\(.+,[0-9]{2,}\)",             // detect 2-digit number in second channel
                 r"table2\(.+[,\(][0-9]{2,}[,\(].+\)", // detect 2-digit number in table
             ],
         );
@@ -49,16 +49,11 @@ fn compose_targets(cli: &Cli) -> HashMap<&'static str, Vec<&'static str>> {
     templates_map
 }
 
-fn compile_targets(
-    templates_map: HashMap<&'static str, Vec<&str>>,
-) -> HashMap<&'static str, Vec<Regex>> {
+fn compile_targets(templates_map: HashMap<&'static str, Vec<&str>>) -> HashMap<&'static str, Vec<Regex>> {
     let regex_map: HashMap<&'static str, Vec<Regex>> = templates_map
         .iter()
         .map(|(k, v)| {
-            let compiled_regexes = v
-                .iter()
-                .map(|pattern| Regex::new(pattern).unwrap())
-                .collect();
+            let compiled_regexes = v.iter().map(|pattern| Regex::new(pattern).unwrap()).collect();
             (*k, compiled_regexes)
         })
         .collect();
