@@ -17,10 +17,11 @@ impl QueryExplainer {
             let new_queue_entries = iteration.new_queue_entries.len();
 
             if skip_queue_entries < new_queue_entries || ancestry.is_empty() {
-                ancestry.push(iteration.clone());
                 if i == 0 {
                     break;
                 }
+
+                ancestry.push(iteration.clone());
 
                 // need to take from previous iteration, because in case of deriving bad, the queue is emptied
                 skip_queue_entries = iterations[i - 1].progress.in_queue - 1;
