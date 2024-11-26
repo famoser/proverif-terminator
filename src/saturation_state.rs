@@ -1,6 +1,7 @@
 use crate::iteration_summary::IterationSummary;
 use std::cmp::PartialEq;
 use std::fmt::{Display, Formatter};
+use std::mem;
 
 pub struct SaturationState {
     progress: Option<SaturationProgress>,
@@ -8,7 +9,8 @@ pub struct SaturationState {
     hypothesis_fact_selected: Option<SelectedFact>,
     conclusion_fact_selected: Option<SelectedFact>,
 
-    new_queue_entries: Vec<String>,
+    queue_entries: Vec<String>,
+    last_iteration_queue_entries: Vec<String>,
 
     pub iterations: Vec<Iteration>,
     pub hypothesis_selected_fact_history: Vec<(String, u32)>,
@@ -54,7 +56,8 @@ impl SaturationState {
             conclusion_fact_selected: None,
             hypothesis_fact_selected: None,
 
-            new_queue_entries: Vec::new(),
+            queue_entries: Vec::new(),
+            last_iteration_queue_entries: Vec::new(),
 
             iterations: Vec::new(),
             hypothesis_selected_fact_history: Vec::new(),
@@ -65,15 +68,9 @@ impl SaturationState {
         self.query = Some(query);
     }
 
-    pub fn set_queue_entry(&mut self, entry_number: usize, rule: String) {
-        // ignore queue entries already existing in previous queue
-        if let Some(last_iteration) = self.iterations.last() {
-            if entry_number < last_iteration.progress.in_queue {
-                return;
-            }
-        }
-
-        self.new_queue_entries.push(rule);
+    pub fn set_queue_entry(&mut self, _entry_number: usize, rule: String) {
+        // assumes in order; which is a valid assumption
+        self.queue_entries.push(rule);
     }
 
     pub fn set_hypothesis_fact_selected(&mut self, fact: String, fact_number: usize) {
@@ -101,12 +98,16 @@ impl SaturationState {
         let progress = self.progress.unwrap();
         let query = self.query.clone().unwrap();
 
+        let new_queue_entries = get_new_queue_entries(&self.last_iteration_queue_entries, &self.queue_entries);
+        self.last_iteration_queue_entries = Vec::new();
+        mem::swap(&mut self.last_iteration_queue_entries, &mut self.queue_entries);
+
         let iteration = Iteration {
             progress,
             query,
+            new_queue_entries,
             hypothesis_fact_selected: self.hypothesis_fact_selected.clone(),
             conclusion_fact_selected: self.conclusion_fact_selected.clone(),
-            new_queue_entries: self.new_queue_entries.clone(),
         };
 
         // keep aggregated history of selected hypothesis (useful to detect loops)
@@ -127,7 +128,6 @@ impl SaturationState {
         self.query = None;
         self.hypothesis_fact_selected = None;
         self.conclusion_fact_selected = None;
-        self.new_queue_entries = Vec::new();
         self.iterations.push(iteration);
 
         Some(summary)
@@ -165,4 +165,43 @@ impl SaturationState {
 
         line
     }
+}
+
+fn get_new_queue_entries(previous_queue: &Vec<String>, current_queue: &Vec<String>) -> Vec<String> {
+    let mut current_queue_threshold = 0;
+    for entry in previous_queue {
+        if current_queue_threshold == current_queue.len() {
+            return Vec::new();
+        }
+
+        if *entry == current_queue[current_queue_threshold] {
+            current_queue_threshold += 1
+        }
+    }
+
+    current_queue[current_queue_threshold..].to_vec()
+}
+
+#[test]
+fn test_get_new_queue_entries() {
+    let previous_queue = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+    let current_queue = vec!["a".to_string(), "b".to_string(), "c".to_string(), "d".to_string()];
+    let new_queue_entries = vec!["d".to_string()];
+    assert_eq!(get_new_queue_entries(&previous_queue, &current_queue), new_queue_entries);
+
+    let current_queue = vec!["b".to_string(), "d".to_string()];
+    let new_queue_entries = vec!["d".to_string()];
+    assert_eq!(get_new_queue_entries(&previous_queue, &current_queue), new_queue_entries);
+
+    let current_queue = vec!["d".to_string()];
+    let new_queue_entries = vec!["d".to_string()];
+    assert_eq!(get_new_queue_entries(&previous_queue, &current_queue), new_queue_entries);
+
+    let current_queue = vec![];
+    let new_queue_entries: Vec<String> = vec![];
+    assert_eq!(get_new_queue_entries(&previous_queue, &current_queue), new_queue_entries);
+
+    let previous_queue = vec![];
+    let current_queue = vec!["a".to_string()];
+    assert_eq!(get_new_queue_entries(&previous_queue, &current_queue), current_queue);
 }

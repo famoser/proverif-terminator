@@ -169,8 +169,7 @@ fn flush_iteration(cli: &Cli, saturation_state: &mut SaturationState, fact_check
 
     if let Some(explain_query) = cli.explain_query {
         if saturation_state.iterations.len() == explain_query {
-            let explainer = QueryExplainer::new();
-            let ancestry = explainer.get_ancestry(&saturation_state.iterations);
+            let ancestry = QueryExplainer::get_ancestry(&saturation_state.iterations);
             iteration_summary.add_ancestry(ancestry);
         }
         cycle_detector.check_cycles(&saturation_state.hypothesis_selected_fact_history, &mut iteration_summary);
