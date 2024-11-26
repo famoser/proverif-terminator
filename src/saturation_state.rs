@@ -167,7 +167,7 @@ impl SaturationState {
     }
 }
 
-fn get_new_queue_entries(previous_queue: &Vec<String>, current_queue: &Vec<String>) -> Vec<String> {
+fn get_new_queue_entries(previous_queue: &Vec<String>, current_queue: &[String]) -> Vec<String> {
     let mut current_queue_threshold = 0;
     for entry in previous_queue {
         if current_queue_threshold == current_queue.len() {
